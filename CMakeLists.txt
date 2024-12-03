@@ -54,6 +54,8 @@ if(NOT TARGET "cpcmx::cpcmx" AND WITH_CPCMX)
    add_compile_definitions(WITH_CPCMX)
 endif()
 
+find_package(numsa REQUIRED)
+
 if(NOT TARGET "test-drive::test-drive")
   find_package("test-drive" REQUIRED)
 endif()
