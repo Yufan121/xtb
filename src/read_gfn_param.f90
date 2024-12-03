@@ -42,7 +42,7 @@ subroutine readParam &
    logical, parameter :: debug = .false.
 
    type(TEnvironment), intent(inout) :: env
-   integer, intent(in) :: iunit
+   integer, intent(in) :: iunit     
    type(TxTBParameter), intent(inout) :: globpar
    type(TxTBData), intent(out) :: xtbData
    logical, intent(in) :: initialize
@@ -467,7 +467,7 @@ subroutine read_elempar
    use xtb_mctc_strings
    use xtb_readin
    implicit none
-   character(len=:), allocatable :: key, val
+   character(len=:), allocatable :: key, val  
    integer :: iz, ie
    if (getValue(env,line(4:5),iz)) then
       timestp(iz) = line(7:len_trim(line))
@@ -484,7 +484,7 @@ subroutine read_elempar
          key = lowercase(trim(line(:ie-1)))
          val = trim(adjustl(line(ie+1:)))
 
-         call gfn_elempar(key,val,iz)
+         call gfn_elempar(key,val,iz) ! call gfn_elempar to get each parameter
 
       enddo
    else
@@ -492,7 +492,7 @@ subroutine read_elempar
    endif
 end subroutine read_elempar
 
-subroutine gfn_elempar(key,val,iz)
+subroutine gfn_elempar(key,val,iz)  ! iz is the element number
    use xtb_mctc_strings
    use xtb_readin
    implicit none

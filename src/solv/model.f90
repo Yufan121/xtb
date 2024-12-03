@@ -428,7 +428,7 @@ subroutine loadInternalParam(self, env, solvent, level)
 end subroutine loadInternalParam
 
 
-subroutine readParamFile(self, env)
+subroutine readParamFile(self, env) 
 
    !> Error source for traceback
    character(len=*), parameter :: source = 'solv_model_readParamFile'

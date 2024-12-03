@@ -42,7 +42,7 @@ module xtb_xtb_calculator
    use xtb_constrainpot
    use xtb_basis, only : newBasisset
    use xtb_mctc_systools, only : rdpath
-   use xtb_readparam, only : readParam
+   use xtb_readparam, only : readParam ! import xtb_readparam yufan
    use xtb_paramset, only : use_parameterset
    use xtb_chargemodel, only : new_charge_model_2019
    use xtb_disp_ncoord, only : ncoord_erf
