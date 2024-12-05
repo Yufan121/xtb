@@ -132,7 +132,7 @@ subroutine readParam &
             call read_pairpar
          case default
             if (index(line,'Z').eq.2) then
-               call read_elempar
+               call read_elempar !!!! read_elempar is called here !!!!!
             else
                call getline(iunit,line,err)
                if (debug) print'(">",a)',line
@@ -221,7 +221,7 @@ subroutine readParam &
    call generateValenceShellData(xtbData%hamiltonian%valenceShell, &
       & xtbData%nShell, xtbData%hamiltonian%angShell)
 
-   select case(level)
+   select case(level) ! GFN 0 or 1 or 2
    case(0)
       ! Hamiltonian
       xtbData%hamiltonian%wExp = 1.0_wp
@@ -552,7 +552,7 @@ subroutine gfn_elempar(key,val,iz)  ! iz is the element number
    case('qpol');  if (getValue(env,val,ddum)) quadKernel(iz)   = ddum * 0.01_wp
    case('repa');  if (getValue(env,val,ddum)) repAlpha(iz)   = ddum
    case('repb');  if (getValue(env,val,ddum)) repZeff(iz)   = ddum
-   case('polys'); if (getValue(env,val,ddum)) shellPoly(1,iz) = ddum
+   case('polys'); if (getValue(env,val,ddum)) shellPoly(1,iz) = ddum !!! this line means that the shell poly is not supported?
    case('polyp'); if (getValue(env,val,ddum)) shellPoly(2,iz) = ddum
    case('polyd'); if (getValue(env,val,ddum)) shellPoly(3,iz) = ddum
    case('polyf'); if (getValue(env,val,ddum)) shellPoly(4,iz) = ddum

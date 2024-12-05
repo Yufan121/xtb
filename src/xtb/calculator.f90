@@ -108,12 +108,18 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
    character(len=*), intent(in), optional :: fname
 
    character(len=:), allocatable :: filename
+   character(len=:), allocatable :: filename_per_atom
+
+
    type(TxTBParameter) :: globpar
    integer :: ich
    logical :: exist, okbas
    logical :: exitRun
 
-   if (present(fname)) then
+   !> Print some thing to verify, Yufan
+   print*,"\n\n\n\n\n\n\n newXTBCalculator\n\n\n\n\n"
+
+   if (present(fname)) then ! get the param filename
       filename = fname
    else
       if (present(method)) then
@@ -123,10 +129,12 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
             if (.not.exist) filename = 'param_gfn0-xtb.txt'
          case(1)
             call rdpath(env%xtbpath, 'param_gfn1-xtb.txt', filename, exist)
-            if (.not.exist) filename = 'param_gfn1-xtb.txt'
          case(2)
             call rdpath(env%xtbpath, 'param_gfn2-xtb.txt', filename, exist)
             if (.not.exist) filename = 'param_gfn2-xtb.txt'
+
+            call rdpath(env%xtbpath, 'param_gfn2-xtb-per-atom.txt', filename_per_atom, exist)
+            if (.not.exist) filename_per_atom = 'param_gfn2-xtb-per-atom.txt'
          end select
       end if
    end if
@@ -146,13 +154,13 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
 
    !> Obtain the parameter file
    allocate(calc%xtbData)
-   call open_file(ich, filename, 'r')
+   call open_file(ich, filename, 'r') ! file are stored in ich
    exist = ich /= -1
    if (exist) then
-      call readParam(env, ich, globpar, calc%xtbData, .true.)
+      call readParam(env, ich, globpar, calc%xtbData, .true.) !!!!!! Parameter is read here !!!! Yufan
       call close_file(ich)
    else ! no parameter file, check if we have one compiled into the code
-      call use_parameterset(filename, globpar, calc%xtbData, exist)
+      call use_parameterset(filename, globpar, calc%xtbData, exist)  !!! seems only load the global parameters
       if (.not.exist) then
          call env%error('Parameter file '//filename//' not found!', source)
          return
@@ -174,7 +182,7 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
 
    !> set up the basis set for the tb-Hamiltonian
    allocate(calc%basis)
-   call newBasisset(calc%xtbData, mol%n, mol%at, calc%basis, okbas)
+   call newBasisset(calc%xtbData, mol%n, mol%at, calc%basis, okbas) !!!! call basis set !!!!
    if (.not.okbas) then
       call env%error('basis set could not be setup completely', source)
       return
