@@ -305,9 +305,44 @@ subroutine readParam &
       call newD4Model(xtbData%dispersion%dispm, xtbData%dispersion%g_a, &
          & xtbData%dispersion%g_c, p_refq_gfn2xtb)
 
+   call read_per_atom_param('path_to_your_parameter_file.txt')
+
    end select
 
 contains
+subroutine read_per_atom_param(filename) ! Yufan
+   use xtb_mctc_io, only: open_file, close_file
+   implicit none
+
+   character(len=*), intent(in) :: filename
+   integer :: io_unit, io_stat
+   character(len=1000) :: line
+   logical :: in_section = .false.
+
+   call open_file(io_unit, filename, 'r')
+
+   do
+      read(io_unit, '(A)', iostat=io_stat) line
+      if (io_stat /= 0) exit  ! End of file or error
+
+      ! Check for section start
+      if (index(line, '$') == 1) then
+         if (in_section) then
+            print *, "End of section"
+            in_section = .false.
+         else
+            print *, "Start of new section: ", trim(line)
+            in_section = .true.
+         end if
+      else if (in_section) then
+         print *, "  ", trim(line)
+      end if
+   end do
+
+   call close_file(io_unit)
+
+   print *, "Finished reading file: ", trim(filename)
+end subroutine read_new_param_file
 
 subroutine read_info
    use xtb_readin, only : getValue
