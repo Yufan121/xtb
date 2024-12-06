@@ -184,7 +184,7 @@ module xtb_xtb_gfn2
       & 0.097834_wp] * 0.1_wp
 
    !> Scaling factors for shell electrostatics
-   real(wp), parameter :: shellHardness(1:3, 1:maxElem) = reshape([&
+   real(wp), parameter :: shellHardness(1:3, 1:maxElem) = reshape([& ! shape (3, maxElem)
       & 0.0_wp, 0.0000000_wp, 0.0000000_wp, 0.0_wp, 0.0000000_wp, 0.0000000_wp, &
       & 0.0_wp, 0.1972612_wp, 0.0000000_wp, 0.0_wp, 0.9658467_wp, 0.0000000_wp, &
       & 0.0_wp, 0.3994080_wp, 0.0000000_wp, 0.0_wp, 0.1056358_wp, 0.0000000_wp, &

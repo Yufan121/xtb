@@ -317,7 +317,7 @@ module xtb_xtb_data
 
 
    !> Default constructor for the data types
-   interface init
+   interface init ! Yufan: interface is good for overloading functions
       module procedure :: initRepulsion
       module procedure :: initHalogen
       module procedure :: initMultipole
