@@ -97,7 +97,7 @@ contains
       case (p_ext_eht, p_ext_xtb)
          allocate (xtb)
 
-         call newXTBCalculator(env, mol, xtb, fname, set%gfn_method, accuracy)
+         call newXTBCalculator(env, mol, xtb, fname, set%gfn_method, accuracy) ! Yufan
 
          call env%check(exitRun)
          if (exitRun) then

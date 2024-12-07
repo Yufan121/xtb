@@ -305,180 +305,181 @@ subroutine readParam &
       call newD4Model(xtbData%dispersion%dispm, xtbData%dispersion%g_a, &
          & xtbData%dispersion%g_c, p_refq_gfn2xtb)
 
-   call read_per_atom_param('path_to_your_parameter_file.txt')
+   ! call read_per_atom_param('path_to_your_parameter_file.txt') ! Yufan
 
    end select
 
 contains
 
-subroutine read_per_atom_param(env, iunit)
-   use xtb_mctc_strings
-   use xtb_readin
-   implicit none
-   type(TEnvironment), intent(inout) :: env
-   integer, intent(in) :: iunit
-   character(len=:), allocatable :: key, val, line
-   integer :: iz, ie, err, natom, nelement
-   logical :: in_section
+! subroutine read_per_atom_param(env, iunit) ! Yufan
+!    use xtb_mctc_strings
+!    use xtb_readin
+!    implicit none
+!    type(TEnvironment), intent(inout) :: env
+!    integer, intent(in) :: iunit
+!    character(len=:), allocatable :: key, val, line
+!    integer :: iz, ie, err, natom, nelement
+!    logical :: in_section
 
-   in_section = .false.
+!    in_section = .false.
 
-   do
-      call getline(iunit, line, err)
-      if (err.ne.0) exit
-      if (index(line, '$') == 1) then
-            if (index(line, 'info') > 0) then
-               call read_info(env, iunit)
-            else if (index(line, 'Z=') == 2) then
-               call read_atom_param(env, iunit, line)
-            end if
-      end if
-   end do
-end subroutine read_per_atom_param
+!    do
+!       call getline(iunit, line, err)
+!       if (err.ne.0) exit
+!       if (index(line, '$') == 1) then
+!             if (index(line, 'info') > 0) then
+!                call read_info_atom_par(env, iunit)
+!             else if (index(line, 'Z=') == 2) then
+!                call read_atom_param(env, iunit, line)
+!             end if
+!       end if
+!    end do
+! end subroutine read_per_atom_param
 
-subroutine read_info(env, iunit) ! Yufan
-   use xtb_readin, only : getValue
-   implicit none
-   type(TEnvironment), intent(inout) :: env
-   integer, intent(in) :: iunit
-   character(len=:), allocatable :: key, val, line
-   integer :: ie, err, idum
+! subroutine read_atom_param(env, iunit, line) ! Yufan
+!     use xtb_mctc_strings
+!     use xtb_readin
+!     implicit none
+!     type(TEnvironment), intent(inout) :: env
+!     integer, intent(in) :: iunit
+!     character(len=*), intent(in) :: line
+!     character(len=:), allocatable :: key, val
+!     integer :: iz, ie, err
 
-   do
-      call getline(iunit, line, err)
-      if (err.ne.0) exit
-      if (index(line, '$end') > 0) exit
-      ie = index(line, ' ')
-      if (line == '') cycle
-      if (ie == 0) cycle
-      key = trim(line(:ie-1))
-      val = trim(adjustl(line(ie+1:)))
-      select case(key)
-      case('level')
-         if (getValue(env, val, idum)) level = idum
-      case('name')
-         xtbData%name = val
-      case('natom')
-         if (getValue(env, val, idum)) natom = idum
-      case('nelement')
-         if (getValue(env, val, idum)) nelement = idum
-      case default
-         call env%warning('Unknown key "'//key//'" for "$info"')
-      end select
-   end do
-end subroutine read_info
+!     if (getValue(env, line(4:5), iz)) then
+!         timestp(iz) = line(7:len_trim(line))
+!         do
+!             call getline(iunit, line, err)
+!             if (err.ne.0) exit
+!             if (index(line, '$end') > 0) exit
+!             ie = index(line, '=')
+!             if (line == '') cycle
+!             if (ie == 0) cycle
+!             key = lowercase(trim(line(:ie-1)))
+!             val = trim(adjustl(line(ie+1:)))
+!             call gfn_atom_param(key, val, iz)
+!         end do
+!     else
+!         call getline(iunit, line, err)
+!     end if
+! end subroutine read_atom_param
 
-subroutine read_atom_param(env, iunit, line) ! Yufan
-   use xtb_mctc_strings
-   use xtb_readin
-   implicit none
-   type(TEnvironment), intent(inout) :: env
-   integer, intent(in) :: iunit
-   character(len=*), intent(in) :: line
-   character(len=:), allocatable :: key, val
-   integer :: iz, ie, err
+! subroutine gfn_atom_param(key, val, iz) ! Yufan
+!     use xtb_mctc_strings
+!     use xtb_readin
+!     implicit none
+!     character(len=*), intent(in) :: key, val
+!     integer, intent(in) :: iz
+!     integer :: narg
+!     character(len=p_str_length), dimension(p_arg_length) :: argv
+!     integer :: i, ii
+!     integer :: idum
+!     real(wp) :: ddum
 
-   if (getValue(env, line(4:5), iz)) then
-      timestp(iz) = line(7:len_trim(line))
-      do
-         call getline(iunit, line, err)
-         if (err.ne.0) exit
-         if (index(line, '$end') > 0) exit
-         ie = index(line, '=')
-         if (line == '') cycle
-         if (ie == 0) cycle
-         key = lowercase(trim(line(:ie-1)))
-         val = trim(adjustl(line(ie+1:)))
-         call gfn_atom_param(key, val, iz)
-      end do
-   else
-      call getline(iunit, line, err)
-   end if
-end subroutine read_atom_param
+!     select case(key)
+!     case default
+!         call env%warning('Unknown key "'//key//'" for "$Z"')
+!     case('ele_id')
+!         if (getValue(env, val, idum)) ele_id(iz) = idum
+!     case('ao')
+!         if (mod(len(val), 2) == 0) then
+!             nShell(iz) = len(val) / 2
+!             do i = 1, nShell(iz)
+!                 ii = 2 * i - 1
+!                 if (getValue(env, val(ii:ii), idum)) then
+!                     principalQuantumNumber(i, iz) = idum
+!                     select case(val(ii+1:ii+1))
+!                     case('s'); angShell(i, iz) = 0
+!                     case('p'); angShell(i, iz) = 1
+!                     case('d'); angShell(i, iz) = 2
+!                     case('f'); angShell(i, iz) = 3
+!                     case('g'); angShell(i, iz) = 4
+!                     case('S'); angShell(i, iz) = 0
+!                     end select
+!                 end if
+!             end do
+!         end if
+!     case('lev')
+!         call parse(val, space, argv, narg)
+!         if (narg == nShell(iz)) then
+!             do i = 1, nShell(iz)
+!                 if (getValue(env, trim(argv(i)), ddum)) selfEnergy(i, iz) = ddum
+!             end do
+!         end if
+!     case('exp')
+!         call parse(val, space, argv, narg)
+!         if (narg == nShell(iz)) then
+!             do i = 1, nShell(iz)
+!                 if (getValue(env, trim(argv(i)), ddum)) slaterExponent(i, iz) = ddum  ! slaterExponent
+!             end do
+!         end if
+!     case('gam')
+!         if (getValue(env, val, ddum)) atomicHardness(iz) = ddum  ! seems only in gfn1
+!     case('gam3')
+!         if (getValue(env, val, ddum)) thirdOrderAtom(iz) = ddum * 0.1_wp ! Third order Hubbard derivatives
+!     case('kcns')
+!         if (getValue(env, val, ddum)) kcnat(0, iz) = ddum * 0.1_wp ! coordination number dependence
+!     case('kcnp')
+!         if (getValue(env, val, ddum)) kcnat(1, iz) = ddum * 0.1_wp
+!     case('dpol')
+!         if (getValue(env, val, ddum)) dipKernel(iz) = ddum * 0.01_wp ! multipole
+!     case('qpol')
+!         if (getValue(env, val, ddum)) quadKernel(iz) = ddum * 0.01_wp ! multipole
+!     case('repa')
+!         if (getValue(env, val, ddum)) repAlpha(iz) = ddum ! repulsion
+!     case('repb')
+!         if (getValue(env, val, ddum)) repZeff(iz) = ddum ! repulsion
+!     case('polys')
+!         if (getValue(env, val, ddum)) shellPoly(1, iz) = ddum ! shell polynomial for hamiltonian
+!     case('polyp')
+!         if (getValue(env, val, ddum)) shellPoly(2, iz) = ddum
+!     case('polyd')
+!         if (getValue(env, val, ddum)) shellPoly(3, iz) = ddum
+!     case('polyf')
+!         if (getValue(env, val, ddum)) shellPoly(4, iz) = ddum
+!     case('lpars')
+!         if (getValue(env, val, ddum)) shellHardness(1, iz) = ddum * 0.1_wp ! shell poly for electrostatics
+!     case('lparp')
+!         if (getValue(env, val, ddum)) shellHardness(2, iz) = ddum * 0.1_wp
+!     case('lpard')
+!         if (getValue(env, val, ddum)) shellHardness(3, iz) = ddum * 0.1_wp
+!     case('lparf')
+!         if (getValue(env, val, ddum)) shellHardness(4, iz) = ddum * 0.1_wp
+!     end select
+! end subroutine gfn_atom_param
 
-subroutine gfn_atom_param(key, val, iz) ! Yufan
-   use xtb_mctc_strings
-   use xtb_readin
-   implicit none
-   character(len=*), intent(in) :: key, val
-   integer, intent(in) :: iz
-   integer :: narg
-   character(len=p_str_length), dimension(p_arg_length) :: argv
-   integer :: i, ii
-   integer :: idum
-   real(wp) :: ddum
+! subroutine read_info_atom_par(env, iunit) ! Yufan
+!     use xtb_readin, only : getValue
+!     implicit none
+!     type(TEnvironment), intent(inout) :: env
+!     integer, intent(in) :: iunit
+!     character(len=:), allocatable :: key, val, line
+!     integer :: ie, err, idum
 
-   select case(key)
-   case default
-      call env%warning('Unknown key "'//key//'" for "$Z"')
-   case('ele_id')
-      if (getValue(env, val, idum)) ele_id(iz) = idum
-   case('ao')
-      if (mod(len(val), 2) == 0) then
-         nShell(iz) = len(val) / 2
-         do i = 1, nShell(iz)
-               ii = 2 * i - 1
-               if (getValue(env, val(ii:ii), idum)) then
-                  principalQuantumNumber(i, iz) = idum
-                  select case(val(ii+1:ii+1))
-                  case('s'); angShell(i, iz) = 0
-                  case('p'); angShell(i, iz) = 1
-                  case('d'); angShell(i, iz) = 2
-                  case('f'); angShell(i, iz) = 3
-                  case('g'); angShell(i, iz) = 4
-                  case('S'); angShell(i, iz) = 0
-                  end select
-               end if
-         end do
-      end if
-   case('lev')
-      call parse(val, space, argv, narg)
-      if (narg == nShell(iz)) then
-         do i = 1, nShell(iz)
-               if (getValue(env, trim(argv(i)), ddum)) selfEnergy(i, iz) = ddum
-         end do
-      end if
-   case('exp')
-      call parse(val, space, argv, narg)
-      if (narg == nShell(iz)) then
-         do i = 1, nShell(iz)
-               if (getValue(env, trim(argv(i)), ddum)) slaterExponent(i, iz) = ddum  ! slaterExponent
-         end do
-      end if
-   case('gam')
-      if (getValue(env, val, ddum)) atomicHardness(iz) = ddum  ! seems only in gfn1
-   case('gam3')
-      if (getValue(env, val, ddum)) thirdOrderAtom(iz) = ddum * 0.1_wp ! Third order Hubbard derivatives
-   case('kcns')
-      if (getValue(env, val, ddum)) kcnat(0, iz) = ddum * 0.1_wp ! coordination number dependence
-   case('kcns')
-      if (getValue(env, val, ddum)) kcnat(1, iz) = ddum * 0.1_wp
-   case('dpol')
-      if (getValue(env, val, ddum)) dipKernel(iz) = ddum * 0.01_wp ! multipole
-   case('qpol')
-      if (getValue(env, val, ddum)) quadKernel(iz) = ddum * 0.01_wp ! multipole
-   case('repa')
-      if (getValue(env, val, ddum)) repAlpha(iz) = ddum ! repulsion
-   case('repb')
-      if (getValue(env, val, ddum)) repZeff(iz) = ddum ! repulsion
-   case('polys')
-      if (getValue(env, val, ddum)) shellPoly(1, iz) = ddum ! shell polynomial for hamiltonian
-   case('polyp')
-      if (getValue(env, val, ddum)) shellPoly(2, iz) = ddum
-   case('polyd')
-      if (getValue(env, val, ddum)) shellPoly(3, iz) = ddum
-   case('polyf')
-      if (getValue(env, val, ddum)) shellPoly(4, iz) = ddum
-   case('lpars')
-      if (getValue(env, val, ddum)) shellHardness(1, iz) = ddum * 0.1_wp ! shell poly for electrostatics
-   case('lparp')
-      if (getValue(env, val, ddum)) shellHardness(2, iz) = ddum * 0.1_wp
-   case('lpard')
-      if (getValue(env, val, ddum)) shellHardness(3, iz) = ddum * 0.1_wp
-   case('lparf')
-      if (getValue(env, val, ddum)) shellHardness(4, iz) = ddum * 0.1_wp
-   end select
-end subroutine gfn_atom_param
+!     do
+!         call getline(iunit, line, err)
+!         if (err.ne.0) exit
+!         if (index(line, '$end') > 0) exit
+!         ie = index(line, ' ')
+!         if (line == '') cycle
+!         if (ie == 0) cycle
+!         key = trim(line(:ie-1))
+!         val = trim(adjustl(line(ie+1:)))
+!         select case(key)
+!         case('level')
+!             if (getValue(env, val, idum)) level = idum
+!         case('name')
+!             xtbData%name = val
+!         case('natom')
+!             if (getValue(env, val, idum)) natom = idum
+!         case('nelement')
+!             if (getValue(env, val, idum)) nelement = idum
+!         case default
+!             call env%warning('Unknown key "'//key//'" for "$info"')
+!         end select
+!     end do
+! end subroutine read_info_atom_par
+
 
 subroutine read_info
    use xtb_readin, only : getValue

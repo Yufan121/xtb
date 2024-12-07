@@ -594,7 +594,7 @@ contains
       ! ------------------------------------------------------------------------
       !> initial guess, setup wavefunction
       select type (calc)
-      type is (TxTBCalculator)
+      type is (TxTBCalculator) ! Yufan
          call chk%wfn%allocate(mol%n, calc%basis%nshell, calc%basis%nao)
 
          ! Make sure number of electrons is initialized an multiplicity is consistent
@@ -623,7 +623,7 @@ contains
             end if
          end if
          !> initialize shell charges from gasteiger charges
-         call iniqshell(calc%xtbData, mol%n, mol%at, mol%z, calc%basis%nshell, chk%wfn%q, chk%wfn%qsh, set%gfn_method)
+         call iniqshell(calc%xtbData, mol%n, mol%at, mol%z, calc%basis%nshell, chk%wfn%q, chk%wfn%qsh, set%gfn_method) ! Yufan
       type is (TTBLiteCalculator)
          call newTBLiteWavefunction(env, mol, calc, chk)
       end select

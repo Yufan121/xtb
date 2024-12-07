@@ -257,7 +257,7 @@ subroutine singlepoint(self, env, mol, chk, printlevel, restart, &
    efix = 0.0_wp
 
    ! ------------------------------------------------------------------------
-   !  actual calculation
+   !  actual calculation   ! Yufan
    select case(self%xtbData%level)
    case(1, 2)
       if (allocated(self%solvation)) then

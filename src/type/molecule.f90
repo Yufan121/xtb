@@ -505,7 +505,7 @@ subroutine deallocate_molecule(self)
    call self%frag%deallocate
 end subroutine deallocate_molecule
 
-subroutine update(self)
+subroutine update(self) ! 
    use xtb_mctc_accuracy, only : wp
    use xtb_pbc_tools
 
