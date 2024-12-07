@@ -76,8 +76,8 @@ module xtb_type_molecule
       !> Element symbols
       character(len=symbolLength), allocatable :: sym(:)
 
-      !> Yufan: atomic element-specific parameters
-      real(wp), allocatable :: atom_params(:)
+      ! !> Yufan: atomic element-specific parameters
+      ! real(wp), allocatable :: atom_params(:)
 
       !> Ordinal numbers
       integer, allocatable :: at(:)
