@@ -154,29 +154,28 @@ subroutine read2Param &
 
    call setpair(level, kpair) 
 
-   ! Yufan: a function to read globpar TODO
+   !!! Yufan: lines loop structure for PerAtom
    call getline(iunitPerAtom,line,err) ! iunit is filename
    if (debug) print'(">",a)',line
    readgroupsperatom: do
       if (index(line,flag).eq.1) then 
          select case(line(2:))
          case('info')
-            call read_info
+            call read_info_per_atom
          ! case('globpar')
          !    call read_globpar
          ! case('pairpar')
          !    call read_pairpar
          case default
             if (index(line,'Z').eq.2) then
-               
-               ! call read_elempar !!!! read_elempar is called here !!!!!
+               ! call read_elempar_per_atom !!!! read_elempar is called here !!!!!
             else
-               call getline(iunit,line,err)
+               call getline(iunitPerAtom,line,err)
                if (debug) print'(">",a)',line
             endif
          end select
       else
-         call getline(iunit,line,err)
+         call getline(iunitPerAtom,line,err)
          if (debug) print'(">",a)',line
       endif
       if (err.ne.0) exit readgroupsperatom
@@ -187,11 +186,12 @@ subroutine read2Param &
       call env%error("Old format parameter file is not supported anymore")
    end if
 
-   call setpair(level, kpair) 
+   call setpair(level, kpair) ! use level to get kpair
+   !!! EndYufan: a function to read globpar
 
 
    mShell = maxval(nShell)
-   xtbData%level = level
+   xtbData%level = level ! set to level
    xtbData%nShell = nShell
    xtbData%ipeashift = globpar%ipeashift * 0.1_wp
 
@@ -345,41 +345,41 @@ subroutine read2Param &
 
 
 
-      !>  call read_per_atom_param('path_to_your_parameter_file.txt') ! Yufan replace xtbData with xtbData%perAtomParam
+      !>  call read_per_atom_param('path_to_your_parameter_file.txt') ! Yufan replace xtbData with xtbData%perAtomXtbData
 
       ! ! Coulomb
       ! if (any(globpar%gam3shell > 0.0_wp)) then
-      !    allocate(xtbData%perAtomParam%Coulomb%thirdOrderShell(mShell, max_elem))
+      !    allocate(xtbData%perAtomXtbData%Coulomb%thirdOrderShell(mShell, max_elem))
       !    call setGFN2ThirdOrderShell(xtbData%Coulomb%thirdOrderShell, & ! does not change any gfn2 param, check next one
       !       & xtbData%nShell, xtbData%hamiltonian%angShell, thirdOrderAtom, &
       !       & globpar%gam3shell)
       ! end if
 
       ! ! Multipole
-      ! allocate(xtbData%perAtomParam%multipole)     ! does not change any param, check next one
-      ! call init(xtbData%perAtomParam%multipole, globpar%aesshift, globpar%aesexp, &
+      ! allocate(xtbData%perAtomXtbData%multipole)     ! does not change any param, check next one
+      ! call init(xtbData%perAtomXtbData%multipole, globpar%aesshift, globpar%aesexp, &
       !    & globpar%aesrmax, globpar%aesdmp3, globpar%aesdmp5, &
       !    & dipKernel, quadKernel)
 
       ! ! Hamiltonian
       ! xtbData%hamiltonian%wExp = 0.5_wp
 
-      ! allocate(xtbData%perAtomParam%hamiltonian%kCN(mShell, max_elem))
+      ! allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, max_elem))
       ! call angToShellData(xtbData%hamiltonian%kCN, xtbData%nShell, &
       !    & xtbData%hamiltonian%angShell, kcnat) 
 
-      ! allocate(xtbData%perAtomParam%hamiltonian%referenceOcc(mShell, max_elem))
+      ! allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, max_elem))
       ! call setGFN2ReferenceOcc(xtbData%hamiltonian, xtbData%nShell)
 
-      ! allocate(xtbData%perAtomParam%hamiltonian%numberOfPrimitives(mShell, max_elem))
+      ! allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, max_elem))
       ! call setGFN2NumberOfPrimitives(xtbData%hamiltonian, xtbData%nShell)
 
       ! ! Dispersion
-      ! call newD4Model(xtbData%perAtomParam%dispersion%dispm, xtbData%dispersion%g_a, &
+      ! call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
       !    & xtbData%dispersion%g_c, p_refq_gfn2xtb)
 
-      ! ! Yufan: read in per-atom parameters, for xtbData%perAtomParam
-      ! call read_per_atom_param(xtbData%perAtomParam, globpar%perAtomUnit)
+      ! ! Yufan: read in per-atom parameters, for xtbData%perAtomXtbData
+      ! call read_per_atom_param(xtbData%perAtomXtbData, globpar%perAtomUnit)
 
 
 
@@ -563,7 +563,7 @@ contains
 subroutine read_info
    use xtb_readin, only : getValue
    character(len=:), allocatable :: key, val
-   integer :: ie, idum
+   integer :: ie, idum ! Yufan: these are only intermediate values
    do
       call getline(iunit,line,err)
       if (debug) print'("->",a)',line
@@ -589,6 +589,37 @@ subroutine read_info
       end select
    enddo
 end subroutine read_info
+
+subroutine read_info_per_atom
+   use xtb_readin, only : getValue
+   character(len=:), allocatable :: key, val
+   integer :: ie, idum ! Yufan: these are only intermediate values
+   do
+      call getline(iunitPerAtom,line,err)
+      if (debug) print'("->",a)',line
+      if (err.ne.0) exit
+      if (index(line,flag).gt.0) exit
+
+      ie = index(line,space)
+      if (line.eq.'') cycle ! skip empty lines
+      if (ie.eq.0) cycle
+
+      key = trim(line(:ie-1))
+      val = trim(adjustl(line(ie+1:)))
+
+      select case(key)
+      case default
+         call env%warning("Unknown key '"//key//"' for '"//flag//"info'")
+      case('level')
+         if (getValue(env,val,idum)) level = idum ! Yufan: this level is only intermediate, so use the same one for perAtom
+      case('name')
+         xtbData%perAtomXtbData%name = val
+      case('doi')
+         xtbData%perAtomXtbData%doi = val
+      end select
+   enddo
+end subroutine read_info_per_atom
+
 
 subroutine read_globpar
    implicit none

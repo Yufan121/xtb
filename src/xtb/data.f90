@@ -309,7 +309,7 @@ module xtb_xtb_data
       real(wp) :: ipeashift
 
       !> Yufan:   
-      type(TxTBDataPerAtom), allocatable :: perAtomParam
+      type(TxTBDataPerAtom), allocatable :: perAtomXtbData
 
 
    contains
