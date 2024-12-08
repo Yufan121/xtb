@@ -160,7 +160,7 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
       call readParam(env, ich, globpar, calc%xtbData, .true.) !!!!!! Parameter is read here !!!! Yufan
       call close_file(ich)
    else ! no parameter file, check if we have one compiled into the code
-      call use_parameterset(filename, globpar, calc%xtbData, exist)  !!! seems only load the global parameters
+      call use_parameterset(filename, globpar, calc%xtbData, exist)  !!! use parameters from compiled code
       if (.not.exist) then
          call env%error('Parameter file '//filename//' not found!', source)
          return
