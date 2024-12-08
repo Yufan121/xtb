@@ -152,9 +152,42 @@ subroutine read2Param &
       call env%error("Old format parameter file is not supported anymore")
    end if
 
-   call setpair(level, kpair)
+   call setpair(level, kpair) 
 
    ! Yufan: a function to read globpar TODO
+   call getline(iunitPerAtom,line,err) ! iunit is filename
+   if (debug) print'(">",a)',line
+   readgroupsperatom: do
+      if (index(line,flag).eq.1) then 
+         select case(line(2:))
+         case('info')
+            call read_info
+         ! case('globpar')
+         !    call read_globpar
+         ! case('pairpar')
+         !    call read_pairpar
+         case default
+            if (index(line,'Z').eq.2) then
+               
+               ! call read_elempar !!!! read_elempar is called here !!!!!
+            else
+               call getline(iunit,line,err)
+               if (debug) print'(">",a)',line
+            endif
+         end select
+      else
+         call getline(iunit,line,err)
+         if (debug) print'(">",a)',line
+      endif
+      if (err.ne.0) exit readgroupsperatom
+      !if (index(line,flag_end).gt.0) exit readgroupsperatom
+   enddo readgroupsperatom
+
+   if (.not.newFormat) then
+      call env%error("Old format parameter file is not supported anymore")
+   end if
+
+   call setpair(level, kpair) 
 
 
    mShell = maxval(nShell)
