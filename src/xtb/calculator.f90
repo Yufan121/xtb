@@ -151,6 +151,7 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
 
    !> Obtain the parameter file
    allocate(calc%xtbData)
+   allocate(calc%xtbData%perAtomXtbData)
    call open_file(ich, filename, 'r') ! file are stored in ich
    exist = ich /= -1
    if (exist) then
