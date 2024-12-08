@@ -154,40 +154,6 @@ subroutine read2Param &
 
    call setpair(level, kpair) 
 
-   !!! Yufan: lines loop structure for PerAtom
-   call getline(iunitPerAtom,line,err) ! iunit is filename
-   if (debug) print'(">",a)',line
-   readgroupsperatom: do
-      if (index(line,flag).eq.1) then 
-         select case(line(2:))
-         case('info')
-            call read_info_per_atom
-         ! case('globpar')
-         !    call read_globpar
-         ! case('pairpar')
-         !    call read_pairpar
-         case default
-            if (index(line,'Z').eq.2) then
-               ! call read_elempar_per_atom !!!! read_elempar is called here !!!!!
-            else
-               call getline(iunitPerAtom,line,err)
-               if (debug) print'(">",a)',line
-            endif
-         end select
-      else
-         call getline(iunitPerAtom,line,err)
-         if (debug) print'(">",a)',line
-      endif
-      if (err.ne.0) exit readgroupsperatom
-      !if (index(line,flag_end).gt.0) exit readgroupsperatom
-   enddo readgroupsperatom
-
-   if (.not.newFormat) then
-      call env%error("Old format parameter file is not supported anymore")
-   end if
-
-   call setpair(level, kpair) ! use level to get kpair
-   !!! EndYufan: a function to read globpar
 
 
    mShell = maxval(nShell)
@@ -258,6 +224,8 @@ subroutine read2Param &
    allocate(xtbData%hamiltonian%valenceShell(mShell, max_elem))
    call generateValenceShellData(xtbData%hamiltonian%valenceShell, &
       & xtbData%nShell, xtbData%hamiltonian%angShell)
+
+
 
    select case(level) ! GFN 0 or 1 or 2
    case(0)
@@ -342,6 +310,66 @@ subroutine read2Param &
       ! Dispersion
       call newD4Model(xtbData%dispersion%dispm, xtbData%dispersion%g_a, &
          & xtbData%dispersion%g_c, p_refq_gfn2xtb)
+
+
+
+      !!!!!!!!! Yufan: lines loop structure for PerAtom !!!!!!!!!
+      call getline(iunitPerAtom,line,err) ! iunit is filename
+      allocate(xtbData%perAtomXtbData)
+      !!! Allocate fields of xtbData%perAtomXtbData
+      allocate(xtbData%perAtomXtbData%hamiltonian%valenceShell(mShell, max_elem))
+      if (any(globpar%gam3shell > 0.0_wp)) then
+         allocate(xtbData%perAtomXtbData%Coulomb%thirdOrderShell(mShell, max_elem))
+      end if
+      allocate(xtbData%perAtomXtbData%multipole)
+      allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, max_elem))
+      allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, max_elem))
+      allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, max_elem))
+      !!! copy fields of xtbData to xtbData%perAtomXtbData
+      ! xtbData%perAtomXtbData%level = xtbData%level ! Should be read in loop below
+      ! xtbData%perAtomXtbData%name = xtbData%name ! Should be read in loop below
+      ! xtbData%perAtomXtbData%srb = xtbData%srb ! not for level 2
+      ! xtbData%perAtomXtbData%halogen = xtbData%halogen ! not for level 2
+      xtbData%perAtomXtbData%coulomb = xtbData%coulomb
+      xtbData%perAtomXtbData%doi = xtbData%doi
+      xtbData%perAtomXtbData%hamiltonian = xtbData%hamiltonian
+      xtbData%perAtomXtbData%dispersion = xtbData%dispersion
+      xtbData%perAtomXtbData%ipeashift = xtbData%ipeashift
+      xtbData%perAtomXtbData%multipole = xtbData%multipole
+      xtbData%perAtomXtbData%nshell = xtbData%nshell
+      xtbData%perAtomXtbData%repulsion = xtbData%repulsion
+
+      ! loop structure      
+      if (debug) print'(">",a)',line
+      readgroupsperatom: do
+         if (index(line,flag).eq.1) then 
+            select case(line(2:))
+            case('info')
+               call read_info_per_atom
+            ! case('globpar')
+            !    call read_globpar
+            ! case('pairpar')
+            !    call read_pairpar
+            case default
+               if (index(line,'Z').eq.2) then
+                  call read_elempar_per_atom !!!! read_elempar is called here !!!!!
+               else
+                  call getline(iunitPerAtom,line,err)
+                  if (debug) print'(">",a)',line
+               endif
+            end select
+         else
+            call getline(iunitPerAtom,line,err)
+            if (debug) print'(">",a)',line
+         endif
+         if (err.ne.0) exit readgroupsperatom
+         !if (index(line,flag_end).gt.0) exit readgroupsperatom
+      enddo readgroupsperatom
+      xtbData%perAtomXtbData%level = level
+      if (.not.newFormat) then
+         call env%error("Old format parameter file is not supported anymore")
+      end if
+      !!! EndYufan: a function to read globpar
 
 
 
@@ -616,6 +644,13 @@ subroutine read_info_per_atom
          xtbData%perAtomXtbData%name = val
       case('doi')
          xtbData%perAtomXtbData%doi = val
+      ! case('ele_id')
+      !    xtbData%perAtomXtbData%ele_id = val
+      case('natom')
+         if (getValue(env,val,idum)) xtbData%perAtomXtbData%nAtom = idum
+      case('nelement')
+         if (getValue(env,val,idum)) xtbData%perAtomXtbData%nElement = idum
+
       end select
    enddo
 end subroutine read_info_per_atom
@@ -774,6 +809,8 @@ subroutine read_elempar
    endif
 end subroutine read_elempar
 
+
+
 subroutine gfn_elempar(key,val,iz)  ! iz is the element number
    use xtb_mctc_strings
    use xtb_readin
@@ -850,6 +887,113 @@ subroutine gfn_elempar(key,val,iz)  ! iz is the element number
    case('kqd');   if (getValue(env,val,ddum)) kqat(2,iz)  = ddum
    end select
 end subroutine gfn_elempar
+
+subroutine read_elempar_per_atom
+   use xtb_mctc_strings
+   use xtb_readin
+   implicit none
+   character(len=:), allocatable :: key, val  
+   integer :: iz, ie
+   if (getValue(env,line(4:5),iz)) then
+      timestp(iz) = line(7:len_trim(line))
+      do
+         call getline(iunit,line,err)
+         if (debug) print'("->",a)',line
+         if (err.ne.0) exit
+         if (index(line,flag).gt.0) exit
+
+         ie = index(line,equal)
+         if (line.eq.'') cycle ! skip empty lines
+         if (ie.eq.0) cycle
+
+         key = lowercase(trim(line(:ie-1)))
+         val = trim(adjustl(line(ie+1:)))
+
+         call gfn_elempar_per_atom(key,val,iz) ! call gfn_elempar to get each parameter
+
+      enddo
+   else
+      call getline(iunit,line,err)
+   endif
+end subroutine read_elempar_per_atom
+
+
+subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the element number
+   use xtb_mctc_strings
+   use xtb_readin
+   implicit none
+   character(len=*), intent(in) :: key, val
+   integer, intent(in) :: iz
+   integer  :: narg
+   character(len=p_str_length),dimension(p_arg_length) :: argv
+   integer :: i, ii
+   integer :: idum
+   real(wp) :: ddum
+   select case(key)
+   case default
+      call env%warning("Unknown key '"//key//"' for '"//flag//"Z'")
+   case('ao')
+      !print'(a,":",a)',key,val
+      if (mod(len(val),2).eq.0) then
+         nShell(iz) = len(val)/2
+         do i = 1, nShell(iz)
+            ii = 2*i-1
+            !print*,i,ii,val(ii:ii),val(ii+1:ii+1)
+            if (getValue(env,val(ii:ii),idum)) then
+               principalQuantumNumber(i,iz) = idum
+               select case(val(ii+1:ii+1))
+               case('s'); angShell(i,iz) = 0
+               case('p'); angShell(i,iz) = 1
+               case('d'); angShell(i,iz) = 2
+               case('f'); angShell(i,iz) = 3
+               case('g'); angShell(i,iz) = 4
+               case('S'); angShell(i,iz) = 0
+               end select
+            endif
+         enddo
+      endif
+   case('lev')
+      call parse(val,space,argv,narg)
+      if (narg .eq. nShell(iz)) then
+         do i = 1, nShell(iz)
+            if (getValue(env,trim(argv(i)),ddum)) selfEnergy(i,iz) = ddum
+         enddo
+      endif
+   case('exp')
+      call parse(val,space,argv,narg)
+      if (narg .eq. nShell(iz)) then
+         do i = 1, nShell(iz)
+            if (getValue(env,trim(argv(i)),ddum)) slaterExponent(i,iz) = ddum
+         enddo
+      endif
+   case('en');  if (getValue(env,val,ddum)) electronegativity(iz)    = ddum
+   case('gam'); if (getValue(env,val,ddum)) atomicHardness(iz)   = ddum
+   case('xi');  if (getValue(env,val,ddum)) eeqEN(iz) = ddum
+   case('alpg'); if (getValue(env,val,ddum)) chargeWidth(iz)   = ddum
+   case('gam3');  if (getValue(env,val,ddum)) thirdOrderAtom(iz)    = ddum * 0.1_wp
+   case('kappa'); if (getValue(env,val,ddum)) eeqkCN(iz)  = ddum
+   case('cxb');   if (getValue(env,val,ddum)) halogenBond(iz) = ddum * 0.1_wp
+   case('kqat2'); if (getValue(env,val,ddum)) kqat2(iz)   = ddum
+   case('dpol');  if (getValue(env,val,ddum)) dipKernel(iz)   = ddum * 0.01_wp
+   case('qpol');  if (getValue(env,val,ddum)) quadKernel(iz)   = ddum * 0.01_wp
+   case('repa');  if (getValue(env,val,ddum)) repAlpha(iz)   = ddum
+   case('repb');  if (getValue(env,val,ddum)) repZeff(iz)   = ddum
+   case('polys'); if (getValue(env,val,ddum)) shellPoly(1,iz) = ddum !!! this line means that the shell poly is not supported?
+   case('polyp'); if (getValue(env,val,ddum)) shellPoly(2,iz) = ddum
+   case('polyd'); if (getValue(env,val,ddum)) shellPoly(3,iz) = ddum
+   case('polyf'); if (getValue(env,val,ddum)) shellPoly(4,iz) = ddum
+   case('lpars'); if (getValue(env,val,ddum)) shellHardness(1,iz)  = ddum * 0.1_wp
+   case('lparp'); if (getValue(env,val,ddum)) shellHardness(2,iz)  = ddum * 0.1_wp
+   case('lpard'); if (getValue(env,val,ddum)) shellHardness(3,iz)  = ddum * 0.1_wp
+   case('lparf'); if (getValue(env,val,ddum)) shellHardness(4,iz)  = ddum * 0.1_wp
+   case('kcns');  if (getValue(env,val,ddum)) kcnat(0,iz) = ddum * 0.1_wp
+   case('kcnp');  if (getValue(env,val,ddum)) kcnat(1,iz) = ddum * 0.1_wp
+   case('kcnd');  if (getValue(env,val,ddum)) kcnat(2,iz) = ddum * 0.1_wp
+   case('kqs');   if (getValue(env,val,ddum)) kqat(0,iz)  = ddum
+   case('kqp');   if (getValue(env,val,ddum)) kqat(1,iz)  = ddum
+   case('kqd');   if (getValue(env,val,ddum)) kqat(2,iz)  = ddum
+   end select
+end subroutine gfn_elempar_per_atom
 
 end subroutine read2Param
 

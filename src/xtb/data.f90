@@ -332,6 +332,12 @@ module xtb_xtb_data
       !> Internal version number
       integer :: level
 
+      !> Number of Atoms
+      integer :: nAtom
+
+      !> Number of Elements
+      integer :: nElement
+
       !> Number of shells
       integer, allocatable :: nShell(:)
 

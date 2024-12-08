@@ -151,13 +151,13 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
 
    !> Obtain the parameter file
    allocate(calc%xtbData)
-   allocate(calc%xtbData%perAtomXtbData)
+   ! allocate(calc%xtbData%perAtomXtbData)
    call open_file(ich, filename, 'r') ! file are stored in ich
    exist = ich /= -1
    if (exist) then
 
       ! Yufan: read in new paramfile
-      call rdpath(env%xtbpath, 'param_gfn2-xtb.txt', filenamePerAtom, exist)
+      call rdpath(env%xtbpath, 'param_gfn2-xtb-per-atom.txt', filenamePerAtom, exist)
       call open_file(ichPerAtom, filenamePerAtom, 'r') ! file are stored in ich
       exist = ichPerAtom /= -1
       if (exist) then
