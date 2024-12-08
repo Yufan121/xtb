@@ -42,7 +42,7 @@ module xtb_xtb_calculator
    use xtb_constrainpot
    use xtb_basis, only : newBasisset
    use xtb_mctc_systools, only : rdpath
-   use xtb_readparam, only : readParam ! import xtb_readparam yufan
+   use xtb_readparam, only : readParam, read2Param ! import xtb_readparam yufan
    use xtb_paramset, only : use_parameterset
    use xtb_chargemodel, only : new_charge_model_2019
    use xtb_disp_ncoord, only : ncoord_erf
@@ -108,11 +108,11 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
    character(len=*), intent(in), optional :: fname
 
    character(len=:), allocatable :: filename
-   character(len=:), allocatable :: filename_per_atom
+   character(len=:), allocatable :: filenamePerAtom
 
 
    type(TxTBParameter) :: globpar
-   integer :: ich
+   integer :: ich, ichPerAtom
    logical :: exist, okbas
    logical :: exitRun
 
@@ -132,9 +132,6 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
          case(2)
             call rdpath(env%xtbpath, 'param_gfn2-xtb.txt', filename, exist)
             if (.not.exist) filename = 'param_gfn2-xtb.txt'
-
-            call rdpath(env%xtbpath, 'param_gfn2-xtb-per-atom.txt', filename_per_atom, exist)
-            if (.not.exist) filename_per_atom = 'param_gfn2-xtb-per-atom.txt'
          end select
       end if
    end if
@@ -157,8 +154,17 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
    call open_file(ich, filename, 'r') ! file are stored in ich
    exist = ich /= -1
    if (exist) then
-      call readParam(env, ich, globpar, calc%xtbData, .true.) !!!!!! Parameter is read here !!!! Yufan
+
+      ! Yufan: read in new paramfile
+      call rdpath(env%xtbpath, 'param_gfn2-xtb.txt', filenamePerAtom, exist)
+      call open_file(ichPerAtom, filenamePerAtom, 'r') ! file are stored in ich
+      exist = ichPerAtom /= -1
+      if (exist) then
+         call read2Param(env, ich, ichPerAtom, globpar, calc%xtbData, .true., mol) !!!!!! Parameter is read here !!!! Yufan
+      endif 
+
       call close_file(ich)
+      call close_file(ichPerAtom)
    else ! no parameter file, check if we have one compiled into the code
       call use_parameterset(filename, globpar, calc%xtbData, exist)  !!! use parameters from compiled code
       if (.not.exist) then
