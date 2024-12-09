@@ -16,7 +16,7 @@
 ! along with xtb.  If not, see <https://www.gnu.org/licenses/>.
 
 module xtb_readparam
-   use xtb_xtb_data
+   use xtb_xtb_data ! 
    use xtb_xtb_gfn0
    use xtb_xtb_gfn1
    use xtb_xtb_gfn2
@@ -133,7 +133,7 @@ subroutine read2Param &
          case('pairpar')
             call read_pairpar
          case default
-            if (index(line,'Z').eq.2) then
+            if (index(line,'Z').eq.2) then 
                call read_elempar !!!! read_elempar is called here !!!!!
             else
                call getline(iunit,line,err)
@@ -279,7 +279,7 @@ subroutine read2Param &
       ! Dispersion
       if (.not.allocated(reference_c6)) call copy_c6(reference_c6)
 
-   case(2)
+   case(2) !!!!! GFN2
       ! Coulomb
       if (any(globpar%gam3shell > 0.0_wp)) then
          allocate(xtbData%Coulomb%thirdOrderShell(mShell, max_elem))
@@ -330,7 +330,7 @@ subroutine read2Param &
       ! xtbData%perAtomXtbData%name = xtbData%name ! Should be read in loop below
       ! xtbData%perAtomXtbData%srb = xtbData%srb ! not for level 2
       ! xtbData%perAtomXtbData%halogen = xtbData%halogen ! not for level 2
-      xtbData%perAtomXtbData%coulomb = xtbData%coulomb
+      xtbData%perAtomXtbData%coulomb = xtbData%coulomb 
       xtbData%perAtomXtbData%doi = xtbData%doi
       xtbData%perAtomXtbData%hamiltonian = xtbData%hamiltonian
       xtbData%perAtomXtbData%dispersion = xtbData%dispersion
@@ -339,7 +339,7 @@ subroutine read2Param &
       xtbData%perAtomXtbData%nshell = xtbData%nshell
       xtbData%perAtomXtbData%repulsion = xtbData%repulsion
 
-      ! loop structure      
+      ! loop structure, load file prarm to xtb_xtb_gfn2 (overwrite original file)
       if (debug) print'(">",a)',line
       readgroupsperatom: do
          if (index(line,flag).eq.1) then 
@@ -369,11 +369,24 @@ subroutine read2Param &
       if (.not.newFormat) then
          call env%error("Old format parameter file is not supported anymore")
       end if
-      !!! EndYufan: a function to read globpar
+      !!! EndYufan loop structure
 
 
 
-      !>  call read_per_atom_param('path_to_your_parameter_file.txt') ! Yufan replace xtbData with xtbData%perAtomXtbData
+      ! Reallocate and assign value to perAtomXtbData
+      ! Repulsion
+      call init(xtbData%perAtomXtbData%repulsion, kExp, kExpLight, 1.0_wp, globpar%renscale, &
+         & repAlpha, repZeff, electronegativity)    ! Yufan, element parameter repAlpha repZeff electronegativity, does not change irrelavant
+      
+      ! xtbData%coulomb%chemicalHardness = atomicHardness(:max_elem)  ! Yufan: element parameter, atomicHardness
+      ! allocate(xtbData%coulomb%shellHardness(mShell, max_elem))
+      ! call setGFN1ShellHardness(xtbData%coulomb%shellHardness, nShell, angShell, & ! Yufan: element parameter, shellHardness
+      !    & atomicHardness, shellHardness)
+      ! xtbData%coulomb%thirdOrderAtom = thirdOrderAtom(:max_elem)  ! Yufan: element parameter
+      ! xtbData%coulomb%electronegativity = eeqEN(:max_elem)
+      ! xtbData%coulomb%kCN = eeqkCN(:max_elem)      ! Yufan: element parameter kCN
+
+
 
       ! ! Coulomb
       ! if (any(globpar%gam3shell > 0.0_wp)) then
@@ -822,6 +835,7 @@ subroutine gfn_elempar(key,val,iz)  ! iz is the element number
    integer :: i, ii
    integer :: idum
    real(wp) :: ddum
+
    select case(key)
    case default
       call env%warning("Unknown key '"//key//"' for '"//flag//"Z'")
@@ -897,9 +911,9 @@ subroutine read_elempar_per_atom
    if (getValue(env,line(4:5),iz)) then
       timestp(iz) = line(7:len_trim(line))
       do
-         call getline(iunit,line,err)
+         call getline(iunitPerAtom,line,err)
          if (debug) print'("->",a)',line
-         if (err.ne.0) exit
+         if (err.ne.0) exit 
          if (index(line,flag).gt.0) exit
 
          ie = index(line,equal)
@@ -913,7 +927,7 @@ subroutine read_elempar_per_atom
 
       enddo
    else
-      call getline(iunit,line,err)
+      call getline(iunitPerAtom,line,err)
    endif
 end subroutine read_elempar_per_atom
 
@@ -929,6 +943,8 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the element number
    integer :: i, ii
    integer :: idum
    real(wp) :: ddum
+   character(len=32) :: repZeff_str ! remove after use
+
    select case(key)
    case default
       call env%warning("Unknown key '"//key//"' for '"//flag//"Z'")
@@ -977,7 +993,12 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the element number
    case('dpol');  if (getValue(env,val,ddum)) dipKernel(iz)   = ddum * 0.01_wp
    case('qpol');  if (getValue(env,val,ddum)) quadKernel(iz)   = ddum * 0.01_wp
    case('repa');  if (getValue(env,val,ddum)) repAlpha(iz)   = ddum
-   case('repb');  if (getValue(env,val,ddum)) repZeff(iz)   = ddum
+   case('repb'); if (getValue(env, val, ddum)) then
+      print *, "Before modification: repZeff(", iz, ") = ", repZeff(iz)
+      repZeff(iz) = ddum
+      print *, "After modification: repZeff(", iz, ") = ", repZeff(iz)
+      call env%warning("val and repZeff(iz) '" // trim(val) // "' for '" // trim(adjustl(repZeff_str)) // "Z'")
+   end if
    case('polys'); if (getValue(env,val,ddum)) shellPoly(1,iz) = ddum !!! this line means that the shell poly is not supported?
    case('polyp'); if (getValue(env,val,ddum)) shellPoly(2,iz) = ddum
    case('polyd'); if (getValue(env,val,ddum)) shellPoly(3,iz) = ddum
