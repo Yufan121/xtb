@@ -237,7 +237,7 @@ subroutine jpot_pcem_gfn2(jData,n,pcem,nshell,at,xyz,Vpc)
 
    ii = 0
    do iat = 1, n
-      ati = at(iat)
+      ati = at(iat) ! 元素
       do ish = 1, nshell(ati)
          gi = jData%shellHardness(ish,ati)
          eh1 = 0.0_wp
