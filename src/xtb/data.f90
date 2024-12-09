@@ -829,7 +829,7 @@ end subroutine initCoulomb
 
 
 !> Transform a data array from angular momenta to shell number references
-subroutine angToShellData(kDat, nShell, angShell, angDat)
+subroutine angToShellData(kDat, nShell, angShell, angDat) ! two angtoshelldaata are the same
 
    !> Data in terms of shell number of each species
    real(wp), intent(out) :: kDat(:, :)

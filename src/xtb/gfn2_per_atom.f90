@@ -18,11 +18,56 @@
 module xtb_xtb_gfn2_per_atom
   use xtb_mctc_accuracy, only: wp
   implicit none
-  public :: thirdOrderAtom
+  public :: thirdOrderAtomPerAtom
 
   ! Third order Hubbard derivatives
-  real(wp), allocatable :: thirdOrderAtom(:)
+  real(wp), allocatable :: thirdOrderAtomPerAtom(:)
 
-  real(wp), allocatable :: repAlpha(:)
+  ! Exponents of repulsion term
+  real(wp), allocatable :: repAlphaPerAtom(:)
+
+  ! Dipole exchange-correlation kernel
+  real(wp), allocatable :: dipKernelPerAtom(:)
+
+  ! Quadrupole exchange-correlation kernel
+  real(wp), allocatable :: quadKernelPerAtom(:)
+
+  !> Effective nuclear charge
+  real(wp), allocatable :: repZeffPerAtom(:)
+  
+  ! Number of shells (for kcn)
+  integer, allocatable :: nShellPerAtom(:)
+
+  ! Element Species (for kcn)
+  integer, allocatable :: ElemIdPerAtom(:)
+
+  ! Shell polynomials to scale Hamiltonian elements, (4, natom)
+  real(wp), allocatable :: shellPolyPerAtom(:, :)
+
+  !> Scaling factors for shell electrostatics (3, natom)
+  real(wp), allocatable :: shellHardnessPerAtom(:, :)
+
+  ! Atomic level information, (3, natom)
+  real(wp), allocatable :: selfEnergyPerAtom(:, :)
+
+  ! Exponent of the Slater function, (3, natom)
+  real(wp), allocatable :: slaterExponentPerAtom(:, :)
+
+  ! Angular momentum of each shell, (3, natom)
+  integer, allocatable :: angShellPerAtom(:, :)
+
+  ! Coordination number dependence of the atomic levels, (4, natom)
+  real(wp), allocatable :: kCNPerAtom(:, :) ! all zero at (4, :)
+
+  !> kcnat, (3, natom)
+  real(wp), allocatable :: kcnatPerAtom(:, :)
+
+  ! Principal quantum number of each shell, (3, natom)
+  integer, allocatable :: principalQuantumNumberPerAtom(:, :)
+
+
+  
 
 end module xtb_xtb_gfn2_per_atom
+
+

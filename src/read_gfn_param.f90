@@ -20,6 +20,7 @@ module xtb_readparam
    use xtb_xtb_gfn0
    use xtb_xtb_gfn1
    use xtb_xtb_gfn2
+   use xtb_xtb_gfn2_per_atom
    use xtb_paramset
    use xtb_disp_dftd3param, only : copy_c6, reference_c6
    use xtb_disp_dftd4, only : newD4Model, p_refq_gfn2xtb, p_refq_goedecker
@@ -117,6 +118,8 @@ subroutine read2Param &
 
    kpair =1.0_wp
 
+
+   !> read all to xtb_xtb_gfn2
    kExpLight = 0.0_wp
    level = -1
    newFormat = .false.
@@ -158,7 +161,7 @@ subroutine read2Param &
 
    mShell = maxval(nShell)
    xtbData%level = level ! set to level
-   xtbData%nShell = nShell
+   xtbData%nShell = nShell ! 1-dim array
    xtbData%ipeashift = globpar%ipeashift * 0.1_wp
 
    ! Repulsion
@@ -205,6 +208,7 @@ subroutine read2Param &
    end if
    xtbData%hamiltonian%kDiff = globpar%kDiff
 
+   ! enScale, not in gfn2
    do iSh = 0, 3
       do jSh = 0, 3
          xtbData%hamiltonian%enScale(jSh, iSh) = 0.005_wp * (globpar%enShell(iSh) &
@@ -300,6 +304,7 @@ subroutine read2Param &
       allocate(xtbData%hamiltonian%kCN(mShell, max_elem))
       call angToShellData(xtbData%hamiltonian%kCN, xtbData%nShell, &
          & xtbData%hamiltonian%angShell, kcnat)                      ! Yufan: element parameter kCN, kCN holds all elements' data
+         ! this kcn is processed using "kcn" from param file
 
       allocate(xtbData%hamiltonian%referenceOcc(mShell, max_elem))
       call setGFN2ReferenceOcc(xtbData%hamiltonian, xtbData%nShell)
@@ -339,6 +344,38 @@ subroutine read2Param &
       xtbData%perAtomXtbData%nshell = xtbData%nshell
       xtbData%perAtomXtbData%repulsion = xtbData%repulsion
 
+      !!! Allocate xtb_gfn2_per_atom 
+      ! Allocate thirdOrderAtom with size mol%n
+      allocate(thirdOrderAtomPerAtom(mol%n))
+      ! Allocate repAlpha with size mol%n
+      allocate(repAlphaPerAtom(mol%n))
+      ! Allocate dipKernel with size mol%n
+      allocate(dipKernelPerAtom(mol%n))
+      ! Allocate quadKernel with size mol%n
+      allocate(quadKernelPerAtom(mol%n)) 
+      ! Allocate Effective nuclear charge with size mol%n
+      allocate(repZeffPerAtom(mol%n)) 
+      ! Allocate nshell 
+      allocate(nShellPerAtom(mol%n))
+      ! Allocate ElemId
+      allocate(ElemIdPerAtom(mol%n))
+      ! Allocate shellPoly with shape (4, mol%n)
+      allocate(shellPolyPerAtom(4, mol%n))
+      ! Allocate selfEnergy with shape (3, mol%n)
+      allocate(selfEnergyPerAtom(3, mol%n))
+      ! Allocate slaterExponent with shape (3, mol%n)
+      allocate(slaterExponentPerAtom(3, mol%n))
+      ! Allocate kCN with shape (4, mol%n)
+      allocate(kCNPerAtom(4, mol%n))
+      ! Allocate Shell Hardness with shape (3, mol%n)
+      allocate(shellHardnessPerAtom(3, mol%n))
+      ! Allocate angshell with shape (3, mol)
+      allocate(angshellPerAtom(3, mol%n))
+      ! Allocate kcnat with shape (3, mol%n)
+      allocate(kcnatPerAtom(3, mol%n))
+      ! Allocate principalQuantumNumberPerAtom (3, mol%n)
+      allocate(principalQuantumNumberPerAtom(3, mol%n))
+
       ! loop structure, load file prarm to xtb_xtb_gfn2 (overwrite original file)
       if (debug) print'(">",a)',line
       readgroupsperatom: do
@@ -373,10 +410,15 @@ subroutine read2Param &
 
 
 
-      ! Reallocate and assign value to perAtomXtbData
+
+
+      !!! Reallocate perAtomXtbData and assign value to it
+
       ! Repulsion
+      ! Yufan, element parameter repAlpha repZeff electronegativity (temporarily use the fixed), does not change irrelavant
+      ! Change self%electronegativity, self%alpha, self%zeff and other global pars
       call init(xtbData%perAtomXtbData%repulsion, kExp, kExpLight, 1.0_wp, globpar%renscale, &
-         & repAlpha, repZeff, electronegativity)    ! Yufan, element parameter repAlpha repZeff electronegativity, does not change irrelavant
+         & repAlphaPerAtom, repZeffPerAtom, electronegativity)    
       
       ! xtbData%coulomb%chemicalHardness = atomicHardness(:max_elem)  ! Yufan: element parameter, atomicHardness
       ! allocate(xtbData%coulomb%shellHardness(mShell, max_elem))
@@ -932,7 +974,7 @@ subroutine read_elempar_per_atom
 end subroutine read_elempar_per_atom
 
 
-subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the element number
+subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the atomic id
    use xtb_mctc_strings
    use xtb_readin
    implicit none
@@ -943,76 +985,78 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the element number
    integer :: i, ii
    integer :: idum
    real(wp) :: ddum
-   character(len=32) :: repZeff_str ! remove after use
+   ! character(len=32) :: repZeff_str ! remove after use
 
    select case(key)
    case default
       call env%warning("Unknown key '"//key//"' for '"//flag//"Z'")
-   case('ao')
+   case('ao')                                                         ! Yufan: changed
       !print'(a,":",a)',key,val
       if (mod(len(val),2).eq.0) then
-         nShell(iz) = len(val)/2
-         do i = 1, nShell(iz)
+         nShellPerAtom(iz) = len(val)/2                                      ! Yufan: changed
+         do i = 1, nShellPerAtom(iz)
             ii = 2*i-1
             !print*,i,ii,val(ii:ii),val(ii+1:ii+1)
             if (getValue(env,val(ii:ii),idum)) then
-               principalQuantumNumber(i,iz) = idum
+               principalQuantumNumberPerAtom(i,iz) = idum
                select case(val(ii+1:ii+1))
-               case('s'); angShell(i,iz) = 0
-               case('p'); angShell(i,iz) = 1
-               case('d'); angShell(i,iz) = 2
-               case('f'); angShell(i,iz) = 3
-               case('g'); angShell(i,iz) = 4
-               case('S'); angShell(i,iz) = 0
+               case('s'); angShellPerAtom(i,iz) = 0
+               case('p'); angShellPerAtom(i,iz) = 1
+               case('d'); angShellPerAtom(i,iz) = 2
+               case('f'); angShellPerAtom(i,iz) = 3
+               case('g'); angShellPerAtom(i,iz) = 4
+               case('S'); angShellPerAtom(i,iz) = 0
                end select
             endif
          enddo
       endif
-   case('lev')
+   case('lev')                                                       ! Yufan: changed
       call parse(val,space,argv,narg)
-      if (narg .eq. nShell(iz)) then
-         do i = 1, nShell(iz)
-            if (getValue(env,trim(argv(i)),ddum)) selfEnergy(i,iz) = ddum
+      if (narg .eq. nShellPerAtom(iz)) then
+         do i = 1, nShellPerAtom(iz)
+            if (getValue(env,trim(argv(i)),ddum)) selfEnergyPerAtom(i,iz) = ddum
          enddo
       endif
-   case('exp')
+   case('exp')                                                       ! Yufan: changed
       call parse(val,space,argv,narg)
-      if (narg .eq. nShell(iz)) then
-         do i = 1, nShell(iz)
-            if (getValue(env,trim(argv(i)),ddum)) slaterExponent(i,iz) = ddum
+      if (narg .eq. nShellPerAtom(iz)) then
+         do i = 1, nShellPerAtom(iz)
+            if (getValue(env,trim(argv(i)),ddum)) slaterExponentPerAtom(i,iz) = ddum
          enddo
       endif
-   case('en');  if (getValue(env,val,ddum)) electronegativity(iz)    = ddum
-   case('gam'); if (getValue(env,val,ddum)) atomicHardness(iz)   = ddum
-   case('xi');  if (getValue(env,val,ddum)) eeqEN(iz) = ddum
-   case('alpg'); if (getValue(env,val,ddum)) chargeWidth(iz)   = ddum
-   case('gam3');  if (getValue(env,val,ddum)) thirdOrderAtom(iz)    = ddum * 0.1_wp
-   case('kappa'); if (getValue(env,val,ddum)) eeqkCN(iz)  = ddum
-   case('cxb');   if (getValue(env,val,ddum)) halogenBond(iz) = ddum * 0.1_wp
-   case('kqat2'); if (getValue(env,val,ddum)) kqat2(iz)   = ddum
-   case('dpol');  if (getValue(env,val,ddum)) dipKernel(iz)   = ddum * 0.01_wp
-   case('qpol');  if (getValue(env,val,ddum)) quadKernel(iz)   = ddum * 0.01_wp
-   case('repa');  if (getValue(env,val,ddum)) repAlpha(iz)   = ddum
-   case('repb'); if (getValue(env, val, ddum)) then
-      print *, "Before modification: repZeff(", iz, ") = ", repZeff(iz)
-      repZeff(iz) = ddum
-      print *, "After modification: repZeff(", iz, ") = ", repZeff(iz)
-      call env%warning("val and repZeff(iz) '" // trim(val) // "' for '" // trim(adjustl(repZeff_str)) // "Z'")
-   end if
-   case('polys'); if (getValue(env,val,ddum)) shellPoly(1,iz) = ddum !!! this line means that the shell poly is not supported?
-   case('polyp'); if (getValue(env,val,ddum)) shellPoly(2,iz) = ddum
-   case('polyd'); if (getValue(env,val,ddum)) shellPoly(3,iz) = ddum
-   case('polyf'); if (getValue(env,val,ddum)) shellPoly(4,iz) = ddum
-   case('lpars'); if (getValue(env,val,ddum)) shellHardness(1,iz)  = ddum * 0.1_wp
-   case('lparp'); if (getValue(env,val,ddum)) shellHardness(2,iz)  = ddum * 0.1_wp
-   case('lpard'); if (getValue(env,val,ddum)) shellHardness(3,iz)  = ddum * 0.1_wp
-   case('lparf'); if (getValue(env,val,ddum)) shellHardness(4,iz)  = ddum * 0.1_wp
-   case('kcns');  if (getValue(env,val,ddum)) kcnat(0,iz) = ddum * 0.1_wp
-   case('kcnp');  if (getValue(env,val,ddum)) kcnat(1,iz) = ddum * 0.1_wp
-   case('kcnd');  if (getValue(env,val,ddum)) kcnat(2,iz) = ddum * 0.1_wp
-   case('kqs');   if (getValue(env,val,ddum)) kqat(0,iz)  = ddum
-   case('kqp');   if (getValue(env,val,ddum)) kqat(1,iz)  = ddum
-   case('kqd');   if (getValue(env,val,ddum)) kqat(2,iz)  = ddum
+   ! case('en');  if (getValue(env,val,ddum)) electronegativity(iz)    = ddum ! not in gfn2? 
+   ! case('gam'); if (getValue(env,val,ddum)) atomicHardness(iz)   = ddum
+   ! case('xi');  if (getValue(env,val,ddum)) eeqEN(iz) = ddum ! nof in gfn2
+   ! case('alpg'); if (getValue(env,val,ddum)) chargeWidth(iz)   = ddum    !  nof in gfn2
+   case('gam3');  if (getValue(env,val,ddum)) thirdOrderAtomPerAtom(iz)    = ddum * 0.1_wp   ! Yufan: changed
+   ! case('kappa'); if (getValue(env,val,ddum)) eeqkCN(iz)  = ddum
+   ! case('cxb');   if (getValue(env,val,ddum)) halogenBond(iz) = ddum * 0.1_wp
+   ! case('kqat2'); if (getValue(env,val,ddum)) kqat2(iz)   = ddum      ! not in gfn2
+   case('dpol');  if (getValue(env,val,ddum)) dipKernelPerAtom(iz)   = ddum * 0.01_wp ! Yufan: changed
+   case('qpol');  if (getValue(env,val,ddum)) quadKernelPerAtom(iz)   = ddum * 0.01_wp ! Yufan: changed
+   case('repa');  if (getValue(env,val,ddum)) repAlphaPerAtom(iz)   = ddum ! Yufan: changed
+   case('repb');  if (getValue(env,val,ddum)) repZeffPerAtom(iz)   = ddum ! Yufan: changed
+   ! case('repb'); if (getValue(env, val, ddum)) then
+   !    print *, "Before modification: repZeff(", iz, ") = ", repZeff(iz)
+   !    repZeff(iz) = ddum
+   !    print *, "After modification: repZeff(", iz, ") = ", repZeff(iz)
+   !    call env%warning("val and repZeff(iz) '" // trim(val) // "' for '" // trim(adjustl(repZeff_str)) // "Z'")
+   ! end if
+   case('polys'); if (getValue(env,val,ddum)) shellPolyPerAtom(1,iz) = ddum ! Yufan: changed
+   case('polyp'); if (getValue(env,val,ddum)) shellPolyPerAtom(2,iz) = ddum 
+   case('polyd'); if (getValue(env,val,ddum)) shellPolyPerAtom(3,iz) = ddum
+   case('polyf'); if (getValue(env,val,ddum)) shellPolyPerAtom(4,iz) = ddum
+   case('lpars'); if (getValue(env,val,ddum)) shellHardnessPerAtom(1,iz)  = ddum * 0.1_wp ! Yufan: changed
+   case('lparp'); if (getValue(env,val,ddum)) shellHardnessPerAtom(2,iz)  = ddum * 0.1_wp
+   case('lpard'); if (getValue(env,val,ddum)) shellHardnessPerAtom(3,iz)  = ddum * 0.1_wp
+   case('lparf'); if (getValue(env,val,ddum)) shellHardnessPerAtom(4,iz)  = ddum * 0.1_wp
+   case('kcns');  if (getValue(env,val,ddum)) kcnatPerAtom(1,iz) = ddum * 0.1_wp !! Yufan: changed, chaos in existing code...
+   case('kcnp');  if (getValue(env,val,ddum)) kcnatPerAtom(2,iz) = ddum * 0.1_wp  !! important, since using allocatable, index changed to start from 1
+   case('kcnd');  if (getValue(env,val,ddum)) kcnatPerAtom(3,iz) = ddum * 0.1_wp 
+   ! case('kqs');   if (getValue(env,val,ddum)) kqat(0,iz)  = ddum  ! not in gfn2
+   ! case('kqp');   if (getValue(env,val,ddum)) kqat(1,iz)  = ddum  ! not in gfn2
+   ! case('kqd');   if (getValue(env,val,ddum)) kqat(2,iz)  = ddum  ! not in gfn2
+   case('ele_id');  if (getValue(env,val,idum)) ElemIdPerAtom(iz) = idum 
    end select
 end subroutine gfn_elempar_per_atom
 
@@ -1563,7 +1607,7 @@ subroutine gfn_elempar(key,val,iz)
    case('kcns');  if (getValue(env,val,ddum)) kcnat(0,iz) = ddum * 0.1_wp
    case('kcnp');  if (getValue(env,val,ddum)) kcnat(1,iz) = ddum * 0.1_wp
    case('kcnd');  if (getValue(env,val,ddum)) kcnat(2,iz) = ddum * 0.1_wp
-   case('kqs');   if (getValue(env,val,ddum)) kqat(0,iz)  = ddum
+   case('kqs');   if (getValue(env,val,ddum)) kqat(0,iz)  = ddum  
    case('kqp');   if (getValue(env,val,ddum)) kqat(1,iz)  = ddum
    case('kqd');   if (getValue(env,val,ddum)) kqat(2,iz)  = ddum
    end select
