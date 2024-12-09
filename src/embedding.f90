@@ -222,7 +222,7 @@ end subroutine jpot_pcem_gfn1
 !! ========================================================================
 !  J potentials for GFN2 including the point charge stuff
 !! ========================================================================
-subroutine jpot_pcem_gfn2(jData,n,pcem,nshell,at,xyz,Vpc)
+subroutine jpot_pcem_gfn2(jData,n,pcem,nshell,at,xyz,Vpc) ! Yufan: TODO
    use xtb_type_pcem
    implicit none
    type(TCoulombData), intent(in) :: jData
@@ -237,9 +237,9 @@ subroutine jpot_pcem_gfn2(jData,n,pcem,nshell,at,xyz,Vpc)
 
    ii = 0
    do iat = 1, n
-      ati = at(iat)
+      ati = at(iat) ! atomic number for n-th atom
       do ish = 1, nshell(ati)
-         gi = jData%shellHardness(ish,ati)
+         gi = jData%shellHardness(ish,ati) ! get shellHardness using atomic number
          eh1 = 0.0_wp
          do kk = 1, pcem%n
             gj = pcem%gam(kk)

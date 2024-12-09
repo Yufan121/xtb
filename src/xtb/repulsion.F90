@@ -88,7 +88,7 @@ subroutine repulsionEnGrad_latp(mol, repData, trans, cutoff, energy, gradient, &
    !$omp private(iat, jat, itr, iZp, jZp, r2, rij, r1, alpha, zeff, kexp, &
    !$omp& t16, t26, t27, dE, dG, dS, k, l)
 #endif
-   do iAt = 1, mol%n
+   do iAt = 1, mol%n ! Yufan: TODO
       do jAt = 1, mol%n
          if (jAt > iAt) cycle
          iZp = mol%at(iAt)
