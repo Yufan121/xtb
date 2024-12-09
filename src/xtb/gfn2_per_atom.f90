@@ -38,8 +38,14 @@ module xtb_xtb_gfn2_per_atom
   ! Number of shells (for kcn)
   integer, allocatable :: nShellPerAtom(:)
 
-  ! Element Species (for kcn)
+  ! Element Species
   integer, allocatable :: ElemIdPerAtom(:)
+
+  ! electronegativityPerAtom
+  real(wp), allocatable :: electronegativityPerAtom(:)
+
+  ! atomicHardnessPerAtom
+  real(wp), allocatable :: atomicHardnessPerAtom(:)
 
   ! Shell polynomials to scale Hamiltonian elements, (4, natom)
   real(wp), allocatable :: shellPolyPerAtom(:, :)

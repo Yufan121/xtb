@@ -359,6 +359,10 @@ subroutine read2Param &
       allocate(nShellPerAtom(mol%n))
       ! Allocate ElemId
       allocate(ElemIdPerAtom(mol%n))
+      ! Allocate ENPerAtom
+      allocate(electronegativityPerAtom(mol%n))
+      ! Allocate atomicHardnessPerAtom
+      allocate(atomicHardnessPerAtom(mol%n))
       ! Allocate shellPoly with shape (4, mol%n)
       allocate(shellPolyPerAtom(4, mol%n))
       ! Allocate selfEnergy with shape (3, mol%n)
@@ -375,6 +379,7 @@ subroutine read2Param &
       allocate(kcnatPerAtom(3, mol%n))
       ! Allocate principalQuantumNumberPerAtom (3, mol%n)
       allocate(principalQuantumNumberPerAtom(3, mol%n))
+
 
       ! loop structure, load file prarm to xtb_xtb_gfn2 (overwrite original file)
       if (debug) print'(">",a)',line
@@ -418,12 +423,13 @@ subroutine read2Param &
       ! Yufan, element parameter repAlpha repZeff electronegativity (temporarily use the fixed), does not change irrelavant
       ! Change self%electronegativity, self%alpha, self%zeff and other global pars
       call init(xtbData%perAtomXtbData%repulsion, kExp, kExpLight, 1.0_wp, globpar%renscale, &
-         & repAlphaPerAtom, repZeffPerAtom, electronegativity)    
+         & repAlphaPerAtom, repZeffPerAtom, electronegativityPerAtom)    
       
-      ! xtbData%coulomb%chemicalHardness = atomicHardness(:max_elem)  ! Yufan: element parameter, atomicHardness
-      ! allocate(xtbData%coulomb%shellHardness(mShell, max_elem))
-      ! call setGFN1ShellHardness(xtbData%coulomb%shellHardness, nShell, angShell, & ! Yufan: element parameter, shellHardness
-      !    & atomicHardness, shellHardness)
+      xtbData%perAtomXtbData%coulomb%chemicalHardness = atomicHardnessPerAtom(:mol%n)  ! Yufan: element parameter, atomicHardness
+      deallocate(xtbData%perAtomXtbData%coulomb%shellHardness)
+      allocate(xtbData%perAtomXtbData%coulomb%shellHardness(mShell, mol%n))
+      call setGFN1ShellHardnessPerAtom(xtbData%perAtomXtbData%coulomb%shellHardness, nShellPerAtom, angShellPerAtom, & ! Yufan: element parameter, shellHardness
+         & atomicHardnessPerAtom, shellHardnessPerAtom)
       ! xtbData%coulomb%thirdOrderAtom = thirdOrderAtom(:max_elem)  ! Yufan: element parameter
       ! xtbData%coulomb%electronegativity = eeqEN(:max_elem)
       ! xtbData%coulomb%kCN = eeqkCN(:max_elem)      ! Yufan: element parameter kCN
@@ -1024,8 +1030,8 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the atomic id
             if (getValue(env,trim(argv(i)),ddum)) slaterExponentPerAtom(i,iz) = ddum
          enddo
       endif
-   ! case('en');  if (getValue(env,val,ddum)) electronegativity(iz)    = ddum ! not in gfn2? 
-   ! case('gam'); if (getValue(env,val,ddum)) atomicHardness(iz)   = ddum
+   case('en');  if (getValue(env,val,ddum)) electronegativityPerAtom(iz)    = ddum ! not in gfn2?  ! Yufan: changed
+   case('gam'); if (getValue(env,val,ddum)) atomicHardnessPerAtom(iz)   = ddum ! Yufan: changed
    ! case('xi');  if (getValue(env,val,ddum)) eeqEN(iz) = ddum ! nof in gfn2
    ! case('alpg'); if (getValue(env,val,ddum)) chargeWidth(iz)   = ddum    !  nof in gfn2
    case('gam3');  if (getValue(env,val,ddum)) thirdOrderAtomPerAtom(iz)    = ddum * 0.1_wp   ! Yufan: changed

@@ -28,7 +28,7 @@ module xtb_xtb_gfn1
 
    public :: initGFN1, gfn1Globals
    public :: setGFN1ReferenceOcc, setGFN1NumberOfPrimitives, setGFN1PairParam
-   public :: setGFN1kCN, setGFN1ShellHardness
+   public :: setGFN1kCN, setGFN1ShellHardness, setGFN1ShellHardnessPerAtom
 
 
    interface initGFN1
@@ -869,6 +869,34 @@ subroutine setGFN1ShellHardness(shellHardness, nShell, angShell, atomicHardness,
    end do
 
 end subroutine setGFN1ShellHardness
+
+subroutine setGFN1ShellHardnessPerAtom(shellHardness, nShell, angShell, atomicHardness, &
+      & angHardness)
+
+   real(wp), intent(out) :: shellHardness(:, :)
+
+   integer, intent(in) :: nShell(:)
+
+   integer, intent(in) :: angShell(:, :)
+
+   real(wp), intent(in) :: atomicHardness(:)
+
+   real(wp), intent(in) :: angHardness(0:, :)
+
+   integer :: nElem, iZp, iSh, lAng
+
+   nElem = min(size(shellHardness, dim=2), size(nShell), size(angShell, dim=2))
+
+   shellHardness(:, :) = 0.0_wp
+   do iZp = 1, nElem
+      do iSh = 1, nShell(iZp)
+         lAng = angShell(iSh, iZp)
+         shellHardness(iSh, iZp) = atomicHardness(iZp) * &
+            (1.0_wp + angHardness(lAng, iZp))
+      end do
+   end do
+
+end subroutine setGFN1ShellHardnessPerAtom
 
 
 subroutine initHalogen(self)
