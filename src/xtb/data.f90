@@ -378,6 +378,7 @@ module xtb_xtb_data
       module procedure :: initRepulsion
       module procedure :: initHalogen
       module procedure :: initMultipole
+      module procedure :: initMultipolePerAtom
       module procedure :: initCoulomb
    end interface init
 
@@ -679,7 +680,7 @@ end subroutine initHalogen
 
 
 subroutine initMultipole(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp, &
-      & dipKernel, quadKernel)
+      & dipKernel, quadKernel) ! Yufan: called from read2pararm
 
    !> Data instance
    type(TMultipoleData), intent(out) :: self
@@ -720,6 +721,61 @@ subroutine initMultipole(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp, &
    self%multiRad = multiRad(:maxElem)
 
 end subroutine initMultipole
+
+subroutine initMultipolePerAtom(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp, &
+      & dipKernel, quadKernel, ElemIdPerAtom) ! Yufan: called from read2pararm
+
+  ! Yyufan: modification 1. add a mapping from atom id to kind
+
+   !> Data instance
+   type(TMultipoleData), intent(out) :: self
+
+   !>    Yufan
+   integer, intent(in) :: ElemIdPerAtom(:)
+
+   !>
+   real(wp), intent(in) :: cnShift
+
+   !>
+   real(wp), intent(in) :: cnExp
+
+   !>
+   real(wp), intent(in) :: cnRMax
+
+   !>
+   real(wp), intent(in) :: dipDamp
+
+   !>
+   real(wp), intent(in) :: quadDamp
+
+   !>
+   real(wp), intent(in) :: dipKernel(:)
+
+   !>
+   real(wp), intent(in) :: quadKernel(:)
+
+   integer :: maxElem, atomId, i
+
+   maxElem = min(size(dipKernel), size(quadKernel))
+
+   self%cnShift = cnShift
+   self%cnExp = cnExp
+   self%cnRMax = cnRMax
+   self%dipDamp = dipDamp
+   self%quadDamp = quadDamp
+   self%dipKernel = dipKernel(:maxElem)
+   self%quadKernel = quadKernel(:maxElem)
+   self%valenceCN = valenceCN(:maxElem) ! Will this be right?
+   self%multiRad = multiRad(:maxElem)
+
+   do i = 1, maxElem
+      atomId = ElemIdPerAtom(i)
+      self%valenceCN(i) = valenceCN(atomId)
+      self%multiRad(i) = multiRad(atomId)
+   end do
+
+end subroutine initMultipolePerAtom
+
 
 
 subroutine initRepulsion(self, kExp, kExpLight, rExp, enScale, alpha, zeff, &

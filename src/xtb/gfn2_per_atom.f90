@@ -17,8 +17,59 @@
 
 module xtb_xtb_gfn2_per_atom
   use xtb_mctc_accuracy, only: wp
+  ! use xtb_xtb_gfn2, only: gfn2Kinds
+  use xtb_xtb_data
   implicit none
-  public :: thirdOrderAtomPerAtom
+  public :: setGFN1ShellHardnessPerAtom, setGFN2ThirdOrderShellPerAtom, setGFN2ReferenceOccPerAtom, setGFN2NumberOfPrimitivesPerAtom
+
+
+  integer, parameter :: maxElem = 86
+
+  integer, parameter :: gfn2Kinds(118) = [&
+  &  1,                                                 1, &! H-He
+  &  1, 1,                               1, 1, 1, 1, 1, 1, &! Li-Ne
+  &  1, 1,                               1, 1, 1, 1, 1, 1, &! Na-Ar
+  &  1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, &! K-Kr
+  &  1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, &! Rb-Xe
+  &  1, 1, &! Cs/Ba
+  &        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, &!La-Lu
+  &        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, &! Lu-Rn
+  &  1, 1, &
+  &        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, &!Fr-
+  &        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1 ]! -Og
+
+  !> Reference occupation of the atom
+  real(wp), parameter :: referenceOcc(0:2, 1:maxElem) = reshape([&
+      & 1.0_wp, 0.0_wp, 0.0_wp,  2.0_wp, 0.0_wp, 0.0_wp,  1.0_wp, 0.0_wp, 0.0_wp, &
+      & 2.0_wp, 0.0_wp, 0.0_wp,  2.0_wp, 1.0_wp, 0.0_wp,  1.0_wp, 3.0_wp, 0.0_wp, &
+      & 1.5_wp, 3.5_wp, 0.0_wp,  2.0_wp, 4.0_wp, 0.0_wp,  2.0_wp, 5.0_wp, 0.0_wp, &
+      & 2.0_wp, 6.0_wp, 0.0_wp,  1.0_wp, 0.0_wp, 0.0_wp,  2.0_wp, 0.0_wp, 0.0_wp, &
+      & 2.0_wp, 1.0_wp, 0.0_wp,  1.5_wp, 2.5_wp, 0.0_wp,  1.5_wp, 3.5_wp, 0.0_wp, &
+      & 2.0_wp, 4.0_wp, 0.0_wp,  2.0_wp, 5.0_wp, 0.0_wp,  2.0_wp, 6.0_wp, 0.0_wp, &
+      & 1.0_wp, 0.0_wp, 0.0_wp,  2.0_wp, 0.0_wp, 0.0_wp,  1.0_wp, 1.0_wp, 1.0_wp, &
+      & 1.0_wp, 1.0_wp, 2.0_wp,  1.0_wp, 1.0_wp, 3.0_wp,  1.0_wp, 1.0_wp, 4.0_wp, &
+      & 1.0_wp, 1.0_wp, 5.0_wp,  1.0_wp, 1.0_wp, 6.0_wp,  1.0_wp, 1.0_wp, 7.0_wp, &
+      & 1.0_wp, 1.0_wp, 8.0_wp,  1.0_wp, 0.0_wp,10.0_wp,  2.0_wp, 0.0_wp, 0.0_wp, &
+      & 2.0_wp, 1.0_wp, 0.0_wp,  1.5_wp, 2.5_wp, 0.0_wp,  1.5_wp, 3.5_wp, 0.0_wp, &
+      & 2.0_wp, 4.0_wp, 0.0_wp,  2.0_wp, 5.0_wp, 0.0_wp,  2.0_wp, 6.0_wp, 0.0_wp, &
+      & 1.0_wp, 0.0_wp, 0.0_wp,  2.0_wp, 0.0_wp, 0.0_wp,  1.0_wp, 1.0_wp, 1.0_wp, &
+      & 1.0_wp, 1.0_wp, 2.0_wp,  1.0_wp, 1.0_wp, 3.0_wp,  1.0_wp, 1.0_wp, 4.0_wp, &
+      & 1.0_wp, 1.0_wp, 5.0_wp,  1.0_wp, 1.0_wp, 6.0_wp,  1.0_wp, 1.0_wp, 7.0_wp, &
+      & 1.0_wp, 1.0_wp, 8.0_wp,  1.0_wp, 0.0_wp,10.0_wp,  2.0_wp, 0.0_wp, 0.0_wp, &
+      & 2.0_wp, 1.0_wp, 0.0_wp,  2.0_wp, 2.0_wp, 0.0_wp,  2.0_wp, 3.0_wp, 0.0_wp, &
+      & 2.0_wp, 4.0_wp, 0.0_wp,  2.0_wp, 5.0_wp, 0.0_wp,  2.0_wp, 6.0_wp, 0.0_wp, &
+      & 1.0_wp, 0.0_wp, 0.0_wp,  2.0_wp, 0.0_wp, 0.0_wp,  1.0_wp, 1.0_wp, 1.0_wp, &
+      & 1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp, &
+      & 1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp, &
+      & 1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp, &
+      & 1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp, &
+      & 1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 1.0_wp,  1.0_wp, 1.0_wp, 2.0_wp, &
+      & 1.0_wp, 1.0_wp, 3.0_wp,  1.0_wp, 1.0_wp, 4.0_wp,  1.0_wp, 1.0_wp, 5.0_wp, &
+      & 1.0_wp, 1.0_wp, 6.0_wp,  1.0_wp, 1.0_wp, 7.0_wp,  1.0_wp, 1.0_wp, 8.0_wp, &
+      & 1.0_wp, 0.0_wp,10.0_wp,  2.0_wp, 0.0_wp, 0.0_wp,  2.0_wp, 1.0_wp, 0.0_wp, &
+      & 2.0_wp, 2.0_wp, 0.0_wp,  2.0_wp, 3.0_wp, 0.0_wp,  2.0_wp, 4.0_wp, 0.0_wp, &
+      & 2.0_wp, 5.0_wp, 0.0_wp,  2.0_wp, 6.0_wp, 0.0_wp], shape(referenceOcc))
+
 
   ! Third order Hubbard derivatives
   real(wp), allocatable :: thirdOrderAtomPerAtom(:)
@@ -72,7 +123,155 @@ module xtb_xtb_gfn2_per_atom
   integer, allocatable :: principalQuantumNumberPerAtom(:, :)
 
 
-  
+
+
+
+
+  contains
+
+  subroutine setGFN1ShellHardnessPerAtom(shellHardness, nShell, angShell, atomicHardness, &
+      & angHardness)
+
+  ! Yyufan: modification 1. change index end to eElem 
+
+
+   real(wp), intent(out) :: shellHardness(:, :)
+
+   integer, intent(in) :: nShell(:)
+
+   integer, intent(in) :: angShell(:, :)
+
+   real(wp), intent(in) :: atomicHardness(:)
+
+   real(wp), intent(in) :: angHardness(0:, :)
+
+   integer :: nElem, iZp, iSh, lAng
+
+   nElem = min(size(shellHardness, dim=2), size(nShell), size(angShell, dim=2))
+
+   shellHardness(:, :) = 0.0_wp
+   do iZp = 1, nElem
+      do iSh = 1, nShell(iZp)
+         lAng = angShell(iSh, iZp)
+         shellHardness(iSh, iZp) = atomicHardness(iZp) * &
+            (1.0_wp + angHardness(lAng, iZp))
+      end do
+   end do
+
+  end subroutine setGFN1ShellHardnessPerAtom
+
+
+  subroutine setGFN2ThirdOrderShellPerAtom(thirdOrderShell, nShell, angShell, &
+      & thirdOrderAtom, gam3Shell, ElemIdPerAtom)
+
+  ! Yyufan: modification 1. change index end to eElem 2. add a mapping from atom id to kind
+
+   real(wp), intent(out) :: thirdOrderShell(:, :)
+
+   integer, intent(in) :: nShell(:)
+
+    integer, intent(in) :: ElemIdPerAtom(:)
+
+   integer, intent(in) :: angShell(:, :)
+
+   real(wp), intent(in) :: thirdOrderAtom(:)
+
+   real(wp), intent(in) :: gam3Shell(:, 0:)
+
+   integer :: nElem, iZp, iSh, lAng, iKind
+
+   nElem = min(size(thirdOrderShell, dim=2), size(nShell), size(angShell, dim=2), &
+      & size(thirdOrderAtom))
+
+   thirdOrderShell(:, :) = 0.0_wp
+   do iZp = 1, nElem
+      iKind = gfn2Kinds(ElemIdPerAtom(iZp)) ! atomic number
+      do iSh = 1, nShell(iZp)
+         lAng = angShell(iSh, iZp)
+         thirdOrderShell(iSh, iZp) = thirdOrderAtom(iZp) * gam3Shell(iKind, lAng)
+      end do
+   end do
+
+  end subroutine setGFN2ThirdOrderShellPerAtom
+
+
+
+  subroutine setGFN2ReferenceOccPerAtom(self, nShell, ElemIdPerAtom)
+
+    !> Data instance
+    type(THamiltonianData), intent(inout) :: self
+
+    !> Number of shells
+    integer, intent(in) :: nShell(:)
+    integer, intent(in) :: ElemIdPerAtom(:)
+
+
+    integer :: lAng, iZp, iSh, nAtom
+    logical :: valShell(0:3)
+
+    nAtom = size(nShell)
+
+    self%referenceOcc(:, :) = 0.0_wp
+    do iZp = 1, nAtom
+        do iSh = 1, nShell(iZp)
+          lAng = self%angShell(iSh, iZp)
+          if (self%valenceShell(iSh, iZp) /= 0) then
+              self%referenceOcc(iSh, iZp) = referenceOcc(lAng, ElemIdPerAtom(iZp))
+          end if
+        end do
+    end do
+
+  end subroutine setGFN2ReferenceOccPerAtom
+
+  subroutine setGFN2NumberOfPrimitivesPerAtom(self, nShell)
+
+    !> Data instance
+    type(THamiltonianData), intent(inout) :: self
+
+    !> Number of shells
+    integer, intent(in) :: nShell(:)
+
+    integer :: nPrim, iZp, iSh, nAtom
+
+    nAtom = size(nShell)
+
+
+    do iZp = 1, nAtom
+        do iSh = 1, nShell(iZp)
+          nPrim = 0
+          if (iZp <= 2) then
+              select case(self%angShell(iSh, iZp))
+              case(0)
+                nPrim = 3
+              case(1)
+                nPrim = 4
+              end select
+          else
+              select case(self%angShell(iSh, iZp))
+              case(0)
+                if (self%principalQuantumNumber(iSh, iZp) > 5) then
+                    nPrim = 6
+                else
+                    nPrim = 4
+                end if
+              case(1)
+                if (self%principalQuantumNumber(iSh, iZp) > 5) then
+                    nPrim = 6
+                else
+                    nPrim = 4
+                end if
+              case(2)
+                nPrim = 3
+              case(3)
+                nPrim = 4
+              end select
+          end if
+          self%numberOfPrimitives(iSh, iZp) = nPrim
+        end do
+    end do
+
+  end subroutine setGFN2NumberOfPrimitivesPerAtom
+
 
 end module xtb_xtb_gfn2_per_atom
 

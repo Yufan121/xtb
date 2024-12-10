@@ -413,8 +413,17 @@ subroutine read2Param &
       end if
       !!! EndYufan loop structure
 
+      xtbData%perAtomXtbData%nShell = nShellPerAtom ! 1-dim array
 
+      xtbData%perAtomXtbData%hamiltonian%electronegativity = electronegativityPerAtom(:)
+      ! xtbData%perAtomXtbData%hamiltonian%atomicRad = atomicRad(:)
+      xtbData%perAtomXtbData%hamiltonian%shellPoly = shellPolyPerAtom(:, :) ! Yufan: element parameter
+      ! xtbData%perAtomXtbData%hamiltonian%pairParam = kpair(:, :)
+      xtbData%perAtomXtbData%hamiltonian%selfEnergy = selfEnergyPerAtom(:mShell, :)  ! Yufan: element parameter, selfEnergy
+      xtbData%perAtomXtbData%hamiltonian%slaterExponent = slaterExponentPerAtom(:mShell, :)   ! Yufan: element parameter, slaterExponent
+      xtbData%perAtomXtbData%hamiltonian%principalQuantumNumber = principalQuantumNumberPerAtom(:mShell, :)
 
+      xtbData%perAtomXtbData%hamiltonian%angShell = angShellPerAtom(:mShell, :)
 
 
       !!! Reallocate perAtomXtbData and assign value to it
@@ -430,51 +439,54 @@ subroutine read2Param &
       allocate(xtbData%perAtomXtbData%coulomb%shellHardness(mShell, mol%n))
       call setGFN1ShellHardnessPerAtom(xtbData%perAtomXtbData%coulomb%shellHardness, nShellPerAtom, angShellPerAtom, & ! Yufan: element parameter, shellHardness
          & atomicHardnessPerAtom, shellHardnessPerAtom)
-      ! xtbData%coulomb%thirdOrderAtom = thirdOrderAtom(:max_elem)  ! Yufan: element parameter
-      ! xtbData%coulomb%electronegativity = eeqEN(:max_elem)
-      ! xtbData%coulomb%kCN = eeqkCN(:max_elem)      ! Yufan: element parameter kCN
+      xtbData%perAtomXtbData%coulomb%thirdOrderAtom = thirdOrderAtomPerAtom(:mol%n)  ! Yufan: element parameter
+      ! xtbData%coulomb%electronegativity = eeqEN(:max_elem) ! neglect, no data for gfn2
+      ! xtbData%coulomb%kCN = eeqkCN(:max_elem)      ! neglect, no data for gfn2
+
+      deallocate(xtbData%perAtomXtbData%hamiltonian%valenceShell)
+      allocate(xtbData%perAtomXtbData%hamiltonian%valenceShell(mShell, mol%n))
+      call generateValenceShellData(xtbData%perAtomXtbData%hamiltonian%valenceShell, &
+         & xtbData%perAtomXtbData%nShell, xtbData%perAtomXtbData%hamiltonian%angShell)
 
 
+      ! Coulomb
+      if (any(globpar%gam3shell > 0.0_wp)) then
+         deallocate(xtbData%perAtomXtbData%coulomb%thirdOrderShell)
+         allocate(xtbData%perAtomXtbData%coulomb%thirdOrderShell(mShell, mol%n))
+         call setGFN2ThirdOrderShellPerAtom(xtbData%perAtomXtbData%Coulomb%thirdOrderShell, & ! 
+            & xtbData%perAtomXtbData%nShell, xtbData%perAtomXtbData%hamiltonian%angShell, thirdOrderAtomPerAtom, &
+            & globpar%gam3shell, ElemIdPerAtom)
+      end if
 
-      ! ! Coulomb
-      ! if (any(globpar%gam3shell > 0.0_wp)) then
-      !    allocate(xtbData%perAtomXtbData%Coulomb%thirdOrderShell(mShell, max_elem))
-      !    call setGFN2ThirdOrderShell(xtbData%Coulomb%thirdOrderShell, & ! does not change any gfn2 param, check next one
-      !       & xtbData%nShell, xtbData%hamiltonian%angShell, thirdOrderAtom, &
-      !       & globpar%gam3shell)
-      ! end if
+      ! Multipole
+      ! deallocate(xtbData%perAtomXtbData)
+      ! allocate(xtbData%perAtomXtbData%multipole)  
+      call init(xtbData%perAtomXtbData%multipole, globpar%aesshift, globpar%aesexp, &
+         & globpar%aesrmax, globpar%aesdmp3, globpar%aesdmp5, &
+         & dipKernelPerAtom, quadKernelPerAtom, ElemIdPerAtom)
 
-      ! ! Multipole
-      ! allocate(xtbData%perAtomXtbData%multipole)     ! does not change any param, check next one
-      ! call init(xtbData%perAtomXtbData%multipole, globpar%aesshift, globpar%aesexp, &
-      !    & globpar%aesrmax, globpar%aesdmp3, globpar%aesdmp5, &
-      !    & dipKernel, quadKernel)
+      ! Hamiltonian
+      xtbData%perAtomXtbData%hamiltonian%wExp = 0.5_wp
 
-      ! ! Hamiltonian
-      ! xtbData%hamiltonian%wExp = 0.5_wp
+      deallocate(xtbData%perAtomXtbData%hamiltonian%kCN)
+      allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, mol%n))
+      call angToShellData(xtbData%perAtomXtbData%hamiltonian%kCN, xtbData%perAtomXtbData%nShell, &
+         & xtbData%perAtomXtbData%hamiltonian%angShell, kcnatPerAtom)  ! no need for new subroutine
 
-      ! allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, max_elem))
-      ! call angToShellData(xtbData%hamiltonian%kCN, xtbData%nShell, &
-      !    & xtbData%hamiltonian%angShell, kcnat) 
+      ! setGFN2ReferenceOcc, just retrive using index, no element_specific params
+      deallocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc)
+      allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, mol%n))
+      call setGFN2ReferenceOccPerAtom(xtbData%perAtomXtbData%hamiltonian, xtbData%perAtomXtbData%nShell, ElemIdPerAtom)
 
-      ! allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, max_elem))
-      ! call setGFN2ReferenceOcc(xtbData%hamiltonian, xtbData%nShell)
+      deallocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives)
+      allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, mol%n))
+      call setGFN2NumberOfPrimitivesPerAtom(xtbData%perAtomXtbData%hamiltonian, xtbData%perAtomXtbData%nShell)
 
-      ! allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, max_elem))
-      ! call setGFN2NumberOfPrimitives(xtbData%hamiltonian, xtbData%nShell)
+      ! Dispersion
+      call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
+         & xtbData%dispersion%g_c, p_refq_gfn2xtb)
 
-      ! ! Dispersion
-      ! call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
-      !    & xtbData%dispersion%g_c, p_refq_gfn2xtb)
-
-      ! ! Yufan: read in per-atom parameters, for xtbData%perAtomXtbData
-      ! call read_per_atom_param(xtbData%perAtomXtbData, globpar%perAtomUnit)
-
-
-
-
-
-
+      
    end select
 
 contains
