@@ -43,7 +43,7 @@ module xtb_scf
    use xtb_xtb_repulsion
    use xtb_xtb_coulomb
    use xtb_xtb_dispersion
-   use xtb_xtb_hamiltonian, only : getSelfEnergy, build_SDQH0, build_dSDQH0, &
+   use xtb_xtb_hamiltonian, only : getSelfEnergy, build_SDQH0, build_SDQH0_perAtom, build_dSDQH0, &
       & build_dSdQH0_noreset, count_dpint, count_qpint
    use xtb_xtb_hamiltonian_gpu, only: build_SDQH0_gpu, build_dSDQH0_gpu
    use xtb_xtb_multipole
@@ -554,7 +554,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       & basis%caoshell, basis%saoshell, basis%nprim, basis%primcount, basis%alp, &
       & basis%cont, S, dpint, qpint, H0)
 #else
-   call build_SDQH0(xtbData%nShell, xtbData%hamiltonian, mol%n, mol%at, &
+   call build_SDQH0_perAtom(xtbData%nShell, xtbData%hamiltonian, xtbData%perAtomXtbData%hamiltonian, mol%n, mol%at, &
       & basis%nbf, basis%nao, mol%xyz, trans, selfEnergy, intcut, &
       & basis%caoshell, basis%saoshell, basis%nprim, basis%primcount, basis%alp, &
       & basis%cont, S, dpint, qpint, H0)

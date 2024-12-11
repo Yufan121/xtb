@@ -36,7 +36,7 @@ module xtb_scc_core
    public :: fermismear, occ, occu, dmat, get_unrestricted_wiberg
    public :: get_wiberg, mpopall, mpop0, mpopao, mpop, mpopsh, qsh2qat, lpop
    public :: iniqshell, setzshell
-   public :: shellPoly, h0scal
+   public :: shellPoly, shellPolyPerAtom, h0scal, h0scal_PerAtom
 
 
    integer, private, parameter :: mmm(20)=(/1,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4/)
@@ -626,7 +626,7 @@ subroutine h0scal(hData,il,jl,izp,jzp,valaoi,valaoj,km)
 
 !  valence
    if(valaoi.and.valaoj) then
-      den=(hData%electronegativity(izp)-hData%electronegativity(jzp))**2
+      den=(hData%electronegativity(izp)-hData%electronegativity(jzp))**2      ! TODO
       enpoly = (1.0_wp+hData%enScale(jl-1,il-1)*den*(1.0_wp+hData%enScale4*den))
       km=hData%kScale(jl-1,il-1)*enpoly*hData%pairParam(izp,jzp)
       return
@@ -647,6 +647,50 @@ subroutine h0scal(hData,il,jl,izp,jzp,valaoi,valaoj,km)
 
 
 end subroutine h0scal
+
+
+!> H0 off-diag scaling
+subroutine h0scal_PerAtom(hData,hDataPerAtom,iat,jat,il,jl,izp,jzp,valaoi,valaoj,km)
+  !$acc routine seq
+   type(THamiltonianData), intent(in) :: hData, hDataPerAtom
+   integer, intent(in)  :: iat
+   integer, intent(in)  :: jat
+   integer, intent(in)  :: il
+   integer, intent(in)  :: jl
+   integer, intent(in)  :: izp
+   integer, intent(in)  :: jzp
+   logical, intent(in)  :: valaoi   ! valance shell 
+   logical, intent(in)  :: valaoj   ! valenceShell, I guess the fixed one is fine
+   real(wp),intent(out) :: km
+   real(wp) :: den, enpoly
+
+   km = 0.0_wp
+
+!  valence
+   if(valaoi.and.valaoj) then
+      ! den=(hData%electronegativity(izp)-hData%electronegativity(jzp))**2      ! Done
+      den=(hData%electronegativity(izp)+hDataPerAtom%electronegativity(iat)-hData%electronegativity(jzp)+hDataPerAtom%electronegativity(jat))**2 
+
+      enpoly = (1.0_wp+hData%enScale(jl-1,il-1)*den*(1.0_wp+hData%enScale4*den))
+      km=hData%kScale(jl-1,il-1)*enpoly*hData%pairParam(izp,jzp)
+      return
+   endif
+
+!  "DZ" functions (on H for GFN or 3S for EA calc on all atoms)
+   if((.not.valaoi).and.(.not.valaoj)) then
+      km=hData%kDiff
+      return
+   endif
+   if(.not.valaoi.and.valaoj) then
+      km=0.5*(hData%kScale(jl-1,jl-1)+hData%kDiff)
+      return
+   endif
+   if(.not.valaoj.and.valaoi) then
+      km=0.5*(hData%kScale(il-1,il-1)+hData%kDiff)
+   endif
+
+
+end subroutine h0scal_PerAtom
 
 
 !! ========================================================================
@@ -694,7 +738,7 @@ end subroutine electro
 !! ========================================================================
 !  S(R) enhancement factor
 !! ========================================================================
-pure function shellPoly(iPoly,jPoly,iRad,jRad,xyz1,xyz2)
+pure function shellPoly(iPoly,jPoly,iRad,jRad,xyz1,xyz2) 
    use xtb_mctc_convert, only : aatoau
    !$acc routine seq
    real(wp), intent(in) :: iPoly,jPoly
@@ -722,6 +766,41 @@ pure function shellPoly(iPoly,jPoly,iRad,jRad,xyz1,xyz2)
    shellPoly= rf1*rf2
 
 end function shellPoly
+
+
+!! ========================================================================
+!  S(R) enhancement factor
+!! ========================================================================
+pure function shellPolyPerAtom(iPoly,jPoly,iPolyPerAtom,jPolyPerAtom,iRad,jRad,xyz1,xyz2) ! TODO
+   use xtb_mctc_convert, only : aatoau
+   !$acc routine seq
+   real(wp), intent(in) :: iPoly,jPoly,iPolyPerAtom,jPolyPerAtom
+   real(wp), intent(in) :: iRad,jRad         ! can be considered
+   real(wp), intent(in) :: xyz1(3),xyz2(3)
+   real(wp) :: shellPolyPerAtom
+   real(wp) :: rab,k1,rr,r,rf1,rf2,dx,dy,dz,a
+
+   a=0.5           ! R^a dependence 0.5 in GFN1
+
+   dx=xyz1(1)-xyz2(1)
+   dy=xyz1(2)-xyz2(2)
+   dz=xyz1(3)-xyz2(3)
+
+   rab=sqrt(dx**2+dy**2+dz**2)
+
+   ! this sloppy conv. factor has been used in development, keep it
+   rr=jRad+iRad
+
+   r=rab/rr
+
+   rf1=1.0d0+0.01*(iPoly)*r**a
+   rf2=1.0d0+0.01*(jPoly)*r**a
+
+   shellPolyPerAtom= rf1*rf2 ! this is the output
+
+end function shellPolyPerAtom 
+
+
 
 !! ========================================================================
 !  set up Coulomb potential due to 2nd order fluctuation

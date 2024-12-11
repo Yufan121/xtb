@@ -443,7 +443,7 @@ subroutine read2Param &
       ! xtbData%coulomb%electronegativity = eeqEN(:max_elem) ! neglect, no data for gfn2
       ! xtbData%coulomb%kCN = eeqkCN(:max_elem)      ! neglect, no data for gfn2
 
-      deallocate(xtbData%perAtomXtbData%hamiltonian%valenceShell)
+      deallocate(xtbData%perAtomXtbData%hamiltonian%valenceShell)       ! May not be needed anymore
       allocate(xtbData%perAtomXtbData%hamiltonian%valenceShell(mShell, mol%n))
       call generateValenceShellData(xtbData%perAtomXtbData%hamiltonian%valenceShell, &
          & xtbData%perAtomXtbData%nShell, xtbData%perAtomXtbData%hamiltonian%angShell)

@@ -25,7 +25,7 @@ module xtb_xtb_data
    implicit none
    private
 
-   public :: TxTBData, init
+   public :: TxTBData, TxTBDataPerAtom, init
    public :: TRepulsionData, TCoulombData, THamiltonianData, TDispersionData
    public :: THalogenData, TMultipoleData, TShortRangeData
    public :: newData, getData

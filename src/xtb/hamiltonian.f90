@@ -20,15 +20,15 @@ module xtb_xtb_hamiltonian
    use xtb_mctc_accuracy, only : wp
    use xtb_mctc_constants, only : pi
    use xtb_mctc_convert, only : evtoau
-   use xtb_xtb_data, only : THamiltonianData
+   use xtb_xtb_data, only : THamiltonianData, TxTBDataPerAtom
    use xtb_intgrad
    use xtb_lin
-   use xtb_scc_core, only : shellPoly, h0scal
+   use xtb_scc_core, only : shellPoly, shellPolyPerAtom, h0scal, h0scal_PerAtom
    use xtb_grad_core, only : dshellPoly
    implicit none
    private
 
-   public :: getSelfEnergy, build_SDQH0, build_dSDQH0, build_dSDQH0_noreset
+   public :: getSelfEnergy, build_SDQH0, build_SDQH0_perAtom, build_dSDQH0, build_dSDQH0_noreset
    public :: count_dpint, count_qpint
 
 
@@ -47,10 +47,10 @@ contains
 subroutine getSelfEnergyFlat(hData, nShell, at, cn, qat, selfEnergy, dSEdcn, dSEdq)
    type(THamiltonianData), intent(in) :: hData
    integer, intent(in) :: nShell(:)
-   integer, intent(in) :: at(:)
-   real(wp), intent(in), optional :: cn(:)
+   integer, intent(in) :: at(:)           ! list of atomic id
+   real(wp), intent(in), optional :: cn(:)      
    real(wp), intent(in), optional :: qat(:)
-   real(wp), intent(out) :: selfEnergy(:)
+   real(wp), intent(out) :: selfEnergy(:)    ! Yufan: 1 D self energy
    real(wp), intent(out), optional :: dSEdcn(:)
    real(wp), intent(out), optional :: dSEdq(:)
 
@@ -141,8 +141,6 @@ subroutine getSelfEnergy2D(hData, nShell, at, cn, qat, selfEnergy, dSEdcn, dSEdq
 end subroutine getSelfEnergy2D
 
 
-!> Computes the dipole and quadrupole integrals and performs screening to
-!  determine, which contribute to potential
 subroutine build_SDQH0(nShell, hData, nat, at, nbf, nao, xyz, trans, selfEnergy, &
       & intcut, caoshell, saoshell, nprim, primcount, alp, cont, &
       & sint, dpint, qpint, H0)
@@ -362,6 +360,233 @@ subroutine build_SDQH0(nShell, hData, nat, at, nbf, nao, xyz, trans, selfEnergy,
    end do
 
 end subroutine build_SDQH0
+
+
+
+!> Computes the dipole and quadrupole integrals and performs screening to
+!  determine, which contribute to potential
+subroutine build_SDQH0_perAtom(nShell, hData, hDataPerAtom, nat, at, nbf, nao, xyz, trans, selfEnergy, &
+      & intcut, caoshell, saoshell, nprim, primcount, alp, cont, & ! Yufan: nshell and hamiltonian
+      & sint, dpint, qpint, H0)
+   implicit none
+   integer, intent(in) :: nShell(:)
+   type(THamiltonianData), intent(in) :: hData, hDataPerAtom
+   !> # of atoms
+   integer, intent(in)  :: nat
+   !> # of spherical AOs (SAOs)
+   integer, intent(in)  :: nao
+   !> # of Cartesian AOs (CAOs)
+   integer, intent(in)  :: nbf
+   integer, intent(in)  :: at(nat)
+   !> Cartesian coordinates
+   real(wp),intent(in)  :: xyz(3,nat)
+   real(wp),intent(in)    :: trans(:, :)
+   real(wp), intent(in) :: selfEnergy(:, :)
+   !> Integral cutoff according to prefactor from Gaussian product theorem
+   real(wp),intent(in)  :: intcut
+   !> Map shell of atom to index in CAO space (lowest Cart. component is taken)
+   integer, intent(in)  :: caoshell(:,:)
+   !> Map shell of atom to index in SAO space (lowest m_l component is taken)
+   integer, intent(in)  :: saoshell(:,:)
+   integer, intent(in)  :: nprim(:)
+   !> Index of first primitive (over entire system) of given CAO
+   integer, intent(in)  :: primcount(:)
+   real(wp),intent(in)  :: alp(:)
+   real(wp),intent(in)  :: cont(:)
+   !> Overlap integral matrix
+   real(wp),intent(out) :: sint(nao,nao)
+   !> Dipole integral matrix
+   real(wp),intent(out) :: dpint(3,nao,nao)
+   !> Quadrupole integral matrix
+   real(wp),intent(out) :: qpint(6,nao,nao)
+   !> Core Hamiltonian
+   real(wp),intent(out) :: H0(:)
+
+   ! type(TxTBDataPerAtom), intent(out) :: perAtomXtbData
+
+
+
+   integer i,j,k,l,m,ii,jj,ll,mm,kk,ki,kj,kl,mi,mj,ij
+   real(wp) tmp1,tmp2,tmp3,tmp4,step,step2
+   real(wp) dx,dy,dz,s00r,s00l,s00,alpj
+   real(wp) skj,r1,r2,tt,t1,t2,t3,t4,thr2,f,ci,cc,cj,alpi,rab2,ab,est
+
+   real(wp)  ra(3),rb(3),f1,f2,point(3)
+   real(wp) dtmp(3),qtmp(6),ss(6,6),dd(3,6,6),qq(6,6,6),tmp(6,6)
+   integer ip,jp,iat,jat,izp,jzp,ish,jsh,icao,jcao,iao,jao,jshmax
+   integer ishtyp,jshtyp,iptyp,jptyp,naoi,naoj,mli,mlj,iprim,jprim
+   integer :: il, jl, itr
+   real(wp) :: zi, zj, zetaij, km, hii, hjj, hav, shpoly
+   integer itt(0:3)
+   parameter(itt  =(/0,1,4,10/))
+   real(wp) :: saw(10)
+
+
+   ! integrals
+   H0(:) = 0.0_wp
+   sint = 0.0_wp
+   dpint = 0.0_wp
+   qpint = 0.0_wp
+   ! --- Aufpunkt for moment operator
+   point = 0.0_wp
+
+   !$omp parallel do default(none) schedule(dynamic) &
+   !$omp shared(nat, xyz, at, nShell, hData, selfEnergy, caoshell, saoshell, hDataPerAtom, &
+   !$omp& nprim, primcount, alp, cont, intcut, trans, point) &
+   !$omp private (iat,jat,izp,ci,ra,rb,saw, &
+   !$omp& rab2,jzp,ish,ishtyp,icao,naoi,iptyp, &
+   !$omp& jsh,jshmax,jshtyp,jcao,naoj,jptyp,ss,dd,qq,shpoly, &
+   !$omp& est,alpi,alpj,ab,iprim,jprim,ip,jp,il,jl,hii,hjj,km,zi,zj,zetaij,hav, &
+   !$omp& mli,mlj,tmp,tmp1,tmp2,iao,jao,ii,jj,k,ij,itr) &
+   !$omp shared(sint,dpint,qpint,H0)
+   do iat = 1, nat         ! atom i
+      ra(1:3) = xyz(1:3,iat)
+      izp = at(iat)
+      do jat = 1, iat-1    ! atom j
+         jzp = at(jat)
+         do ish = 1, nShell(izp)    ! shell id of atom i
+            ishtyp = hData%angShell(ish,izp)       
+            icao = caoshell(ish,iat)
+            naoi = llao(ishtyp)
+            iptyp = itt(ishtyp)
+            do jsh = 1, nShell(jzp)       !  shell id of atom j
+               jshtyp = hData%angShell(jsh,jzp)       ! angular momentem
+               jcao = caoshell(jsh,jat)
+               naoj = llao(jshtyp)
+               jptyp = itt(jshtyp)
+
+               il = ishtyp+1
+               jl = jshtyp+1
+               ! diagonals are the same for all H0 elements
+               hii = selfEnergy(ish, iat) + hDataPerAtom%selfEnergy(ish, iat)       ! Done
+               hjj = selfEnergy(jsh, jat) + hDataPerAtom%selfEnergy(jsh, jat)     ! Done
+
+               ! we scale the two shells depending on their exponent
+               zi = hData%slaterExponent(ish, izp)  + hDataPerAtom%slaterExponent(ish, iat)     ! TODO
+               zj = hData%slaterExponent(jsh, jzp)  + hDataPerAtom%slaterExponent(jsh, jat)     ! TODO
+               zetaij = (2 * sqrt(zi*zj)/(zi+zj))**hData%wExp
+               call h0scal_PerAtom(hData,hDataPerAtom,iat,jat,il,jl,izp,jzp,hData%valenceShell(ish, izp).ne.0, &
+                  & hData%valenceShell(jsh, jzp).ne.0,km)            ! Done
+
+               hav = 0.5_wp * km * (hii + hjj) * zetaij
+
+               do itr = 1, size(trans, dim=2)
+                  rb(1:3) = xyz(1:3,jat) + trans(:, itr)
+                  rab2 = sum( (rb-ra)**2 )
+
+                  ! distance dependent polynomial
+                  shpoly=shellPolyPerAtom(hData%shellPoly(il,izp),hData%shellPoly(jl,jzp),&
+                     &             hDataPerAtom%shellPoly(il,iat), hDataPerAtom%shellPoly(jl,jat), hData%atomicRad(izp),hData%atomicRad(jzp),ra,rb)    ! Done
+
+                  ss = 0.0_wp
+                  dd = 0.0_wp
+                  qq = 0.0_wp
+                  call get_multiints(icao,jcao,naoi,naoj,ishtyp,jshtyp,ra,rb,point, &
+                     &               intcut,nprim,primcount,alp,cont,ss,dd,qq)
+                  !transform from CAO to SAO
+                  call dtrf2(ss,ishtyp,jshtyp)
+                  do k = 1,3
+                     tmp(1:6,1:6) = dd(k,1:6,1:6)
+                     call dtrf2(tmp,ishtyp,jshtyp)
+                     dd(k,1:6,1:6) = tmp(1:6,1:6)
+                  enddo
+                  do k = 1,6
+                     tmp(1:6,1:6) = qq(k,1:6,1:6)
+                     call dtrf2(tmp,ishtyp,jshtyp)
+                     qq(k,1:6,1:6) = tmp(1:6,1:6)
+                  enddo
+                  do ii = 1,llao2(ishtyp)
+                     iao = ii+saoshell(ish,iat)
+                     do jj = 1,llao2(jshtyp)
+                        jao = jj+saoshell(jsh,jat)
+                        ij = lin(iao, jao)
+                        H0(ij) = H0(ij) + hav * shpoly * ss(jj, ii)
+                        !sint(iao, jao) = sint(iao, jao) + ss(jj, ii)
+                        sint(jao, iao) = sint(jao, iao) + ss(jj, ii)
+                        !dpint(:, iao, jao) = dpint(:, iao, jao) + dd(:, jj, ii)
+                        dpint(:, jao, iao) = dpint(:, jao, iao) + dd(:, jj, ii)
+                        !qpint(:, iao, jao) = qpint(:, iao, jao) + qq(:, jj, ii)
+                        qpint(:, jao, iao) = qpint(:, jao, iao) + qq(:, jj, ii)
+                     enddo
+                  enddo
+               enddo
+            enddo
+         enddo
+      enddo
+   enddo
+   !$omp parallel do default(none) shared(nao, sint, dpint, qpint) private(iao, jao)
+   do iao = 1, nao
+      do jao = 1, iao - 1
+         sint(iao, jao) = sint(jao, iao)
+         dpint(:, iao, jao) = dpint(:, jao, iao)
+         qpint(:, iao, jao) = qpint(:, jao, iao)
+      end do
+   end do
+
+   ! diagonal elements
+   !$omp parallel do default(none) schedule(dynamic) &
+   !$omp shared(H0, sint, dpint, qpint) &
+   !$omp shared(nat, xyz, at, nShell, hData, saoshell, selfEnergy, caoshell, hDataPerAtom, &
+   !$omp& point, intcut, nprim, primcount, alp, cont) &
+   !$omp private(iat, ra, izp, ish, ishtyp, iao, i, ii, icao, naoi, iptyp, &
+   !$omp& jsh, jshtyp, jcao, ss, dd, qq, k, tmp, jao, jj, naoj, jptyp)
+   do iat = 1, nat
+      ra = xyz(:, iat)
+      izp = at(iat)
+      do ish = 1, nShell(izp)
+         ishtyp = hData%angShell(ish,izp)    
+         do iao = 1, llao2(ishtyp)
+            i = iao+saoshell(ish,iat)
+            ii = i*(1+i)/2
+            sint(i,i) = 1.0_wp + sint(i,i)
+            H0(ii) = H0(ii) + selfEnergy(ish, iat) + hDataPerAtom%selfEnergy(ish, iat)         ! TODO
+         end do
+
+         icao = caoshell(ish,iat)
+         naoi = llao(ishtyp)
+         iptyp = itt(ishtyp)
+         do jsh = 1, ish
+            jshtyp = hData%angShell(jsh,izp)
+            jcao = caoshell(jsh,iat)
+            naoj = llao(jshtyp)
+            jptyp = itt(jshtyp)
+            ss = 0.0_wp
+            dd = 0.0_wp
+            qq = 0.0_wp
+            call get_multiints(icao,jcao,naoi,naoj,ishtyp,jshtyp,ra,ra,point, &
+               &               intcut,nprim,primcount,alp,cont,ss,dd,qq)
+            !transform from CAO to SAO
+            !call dtrf2(ss,ishtyp,jshtyp)
+            do k = 1,3
+               tmp(1:6, 1:6) = dd(k,1:6, 1:6)
+               call dtrf2(tmp, ishtyp, jshtyp)
+               dd(k, 1:6, 1:6) = tmp(1:6, 1:6)
+            enddo
+            do k = 1,6
+               tmp(1:6, 1:6) = qq(k, 1:6, 1:6)
+               call dtrf2(tmp, ishtyp, jshtyp)
+               qq(k, 1:6, 1:6) = tmp(1:6, 1:6)
+            enddo
+            do ii = 1, llao2(ishtyp)
+               iao = ii + saoshell(ish,iat)
+               do jj = 1, llao2(jshtyp)
+                  jao = jj + saoshell(jsh,iat)
+                  if (jao > iao .and. ish ==  jsh) cycle
+                  dpint(1:3, iao, jao) = dpint(1:3, iao, jao) + dd(1:3, jj, ii)
+                  if (iao /= jao) then
+                     dpint(1:3, jao, iao) = dpint(1:3, jao, iao) + dd(1:3, jj, ii)
+                  end if
+                  qpint(1:6, iao, jao) = qpint(1:6, iao, jao) + qq(1:6, jj, ii)
+                  if (jao /= iao) then
+                     qpint(1:6, jao, iao) = qpint(1:6, jao, iao) + qq(1:6, jj, ii)
+                  end if
+               end do
+            end do
+         end do
+      end do
+   end do
+
+end subroutine build_SDQH0_perAtom
 
 
 !> Computes the gradient of the dipole/qpole integral contribution
