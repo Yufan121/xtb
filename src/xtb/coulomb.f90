@@ -53,6 +53,7 @@ module xtb_xtb_coulomb
    !> Initialize isotropic electrostatics
    interface init
       module procedure :: initCoulomb
+      module procedure :: initCoulombPerAtom
    end interface init
 
 
@@ -83,6 +84,32 @@ subroutine initCoulomb(self, input, nshell, num)
    allocate(self%shift(nsh))
 
 end subroutine initCoulomb
+
+!> Initialize isotropic electrostatics from parametrisation data
+subroutine initCoulombPerAtom(self, input, inputPerAtom, nshell, num)
+
+   !> Instance of the isotropic electrostatics
+   type(TxTBCoulomb), intent(out) :: self
+
+   !> Parametrisation data for coulombic interactions
+   type(TCoulombData), intent(in) :: input, inputPerAtom
+
+   !> Number of shells for each species
+   integer, intent(in) :: nshell(:)
+
+   !> Atomic numbers of each element
+   integer, intent(in) :: num(:)
+
+   integer :: nsh
+
+   call init(self%thirdOrder, input, inputPerAtom, nshell, num)
+
+   nsh = sum(nshell(num))
+   allocate(self%jmat(nsh, nsh))
+   allocate(self%shift(nsh))
+
+end subroutine initCoulombPerAtom
+
 
 
 !> Add shifts from isotropic electrostatics

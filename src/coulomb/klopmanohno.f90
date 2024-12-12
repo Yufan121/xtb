@@ -76,7 +76,9 @@ module xtb_coulomb_klopmanohno
 
    interface init
       module procedure :: initFromMolecule
+      module procedure :: initFromMoleculePerAtom
       module procedure :: initKlopmanOhno
+      module procedure :: initKlopmanOhnoPerAtom
    end interface init
 
 
@@ -119,7 +121,7 @@ subroutine initFromMolecule(self, env, mol, gav, hardness, gExp, num, nshell, &
    integer, intent(in) :: gav
 
    !> Shell/Atomic hardnesses for each species
-   real(wp), intent(in) :: hardness(:, :)
+   real(wp), intent(in) :: hardness(:, :)    ! TODO
 
    !> Generalized exponent
    real(wp), intent(in) :: gExp
@@ -153,7 +155,135 @@ subroutine initFromMolecule(self, env, mol, gav, hardness, gExp, num, nshell, &
 end subroutine initFromMolecule
 
 
-subroutine initKlopmanOhno(self, env, id, lattice, boundaryCond, gav, hardness, &
+subroutine initFromMoleculePerAtom(self, env, mol, gav, hardness, hardnessPerAtom, gExp, num, nshell, &
+      & alpha, tolerance)
+
+   !> Source of the generated error
+   character(len=*), parameter :: source = 'type_coulomb_initFromMolecule'
+
+   !> Instance of the Coulomb evaluator
+   type(TKlopmanOhno), intent(out) :: self
+
+   !> Calculation environment
+   type(TEnvironment), intent(inout) :: env
+
+   !> Molecular structure data
+   type(TMolecule), intent(in) :: mol
+
+   !> Averaging function
+   integer, intent(in) :: gav
+
+   !> Shell/Atomic hardnesses for each species
+   real(wp), intent(in) :: hardness(:, :), hardnessPerAtom(:, :)  ! TODO
+
+   !> Generalized exponent
+   real(wp), intent(in) :: gExp
+
+   !> Atomic number for each id
+   integer, intent(in), optional :: num(:)
+
+   !> Number of shell for each species
+   integer, intent(in), optional :: nshell(:)
+
+   !> Convergence factor
+   real(wp), intent(in), optional :: alpha
+
+   !> Tolerance for the Ewald sum
+   real(wp), intent(in), optional :: tolerance
+
+   logical :: exitRun
+
+   call init(self, env, mol%id, mol%lattice, mol%boundaryCondition, gav, &
+      & hardness, hardnessPerAtom, gExp, num, nshell, alpha, tolerance)
+
+   call env%check(exitRun)
+   if (exitRun) return
+
+   call self%update(env, mol)
+   call env%check(exitRun)
+   if (exitRun) then
+      call env%error("Initializing internal state of evaluator failed", source)
+   end if
+
+end subroutine initFromMoleculePerAtom
+
+subroutine initKlopmanOhno(self, env, id, lattice, boundaryCond, gav, hardness, hardnessPerAtom, &
+      & gExp, num, nshell, alpha, tolerance)
+
+   !> Source of the generated error
+   character(len=*), parameter :: source = 'type_coulomb_initCoulomb'
+
+   !> Instance of the Coulomb evaluator
+   type(TKlopmanOhno), intent(out) :: self
+
+   !> Identity of each atom
+   integer, intent(in) :: id(:)
+
+   !> Calculation environment
+   type(TEnvironment), intent(inout) :: env
+
+   !> Lattice parameters
+   real(wp), intent(in) :: lattice(:, :)
+
+   !> Boundary conditions for this evaluator
+   integer, intent(in) :: boundaryCond
+
+   !> Averaging function
+   integer, intent(in) :: gav
+
+   !> Shell/Atomic hardnesses for each species
+   real(wp), intent(in) :: hardness(:, :), hardnessPerAtom(:, :)
+
+   !> Generalized exponent
+   real(wp), intent(in) :: gExp
+
+   !> Atomic number for each id
+   integer, intent(in), optional :: num(:)
+
+   !> Number of shell for each species
+   integer, intent(in), optional :: nshell(:)
+
+   !> Convergence factor
+   real(wp), intent(in), optional :: alpha
+
+   !> Tolerance for the Ewald sum
+   real(wp), intent(in), optional :: tolerance
+
+   logical :: exitRun
+   integer :: ii
+
+   self%boundaryCondition = boundaryCond
+   self%gExp = gExp
+   self%natom = size(id, dim=1)
+
+   call setupIndexTable(self%natom, self%itbl, id, num, nshell)
+
+   if (present(num)) then
+      allocate(self%hardness(size(hardness, dim=1), size(num)))
+      do ii = 1, size(num)
+         self%hardness(:, ii) = hardness(:, num(ii)) + hardnessPerAtom(:, ii)       ! Done
+      end do
+   else
+      self%hardness = hardness
+   end if
+
+   select case(gav)
+   case default
+      call env%error("Unknown averaging function specified", source)
+      return
+   case(gamAverage%harmonic)
+      self%gamAverage => harmonicAverage
+   case(gamAverage%arithmetic)
+      self%gamAverage => arithmeticAverage
+   case(gamAverage%geometric)
+      self%gamAverage => geometricAverage
+   end select
+
+   call setupBoundaryConditions(self, env, lattice, alpha, tolerance)
+
+end subroutine initKlopmanOhno
+
+subroutine initKlopmanOhnoPerAtom(self, env, id, lattice, boundaryCond, gav, hardness, &
       & gExp, num, nshell, alpha, tolerance)
 
    !> Source of the generated error
@@ -227,7 +357,7 @@ subroutine initKlopmanOhno(self, env, id, lattice, boundaryCond, gav, hardness, 
 
    call setupBoundaryConditions(self, env, lattice, alpha, tolerance)
 
-end subroutine initKlopmanOhno
+end subroutine initKlopmanOhnoPerAtom
 
 
 subroutine getCoulombMatrix(self, mol, jmat)

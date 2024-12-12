@@ -48,6 +48,7 @@ module xtb_xtb_thirdorder
    !> Initialize third order electrostatics
    interface init
       module procedure :: initThirdOrder
+      module procedure :: initThirdOrderPerAtom
    end interface init
 
 
@@ -95,6 +96,48 @@ subroutine initThirdOrder(self, input, nshell, num)
    end if
 
 end subroutine initThirdOrder
+
+!> Initialize third order electrostatics
+subroutine initThirdOrderPerAtom(self, input, inputPerAtom, nshell, num)
+
+   !> Instance of the third order electrostatics
+   type(TThirdOrder), intent(out) :: self
+
+   !> Parametrisation data for coulombic interactions
+   type(TCoulombData), intent(in) :: input, inputPerAtom
+
+   !> Number of shells for each species
+   integer, intent(in) :: nshell(:)
+
+   !> Atomic numbers of each element
+   integer, intent(in) :: num(:)
+
+   integer :: nat, nsh
+   integer :: ii, iat, izp, ish
+
+   nat = size(num, dim=1)
+   nsh = sum(nshell(num))
+
+   ! set 3rd order shell gammas
+   if (allocated(input%thirdOrderShell)) then
+      allocate(self%shellGam(nsh))
+      ii = 0
+      do iat = 1, nat
+         izp = num(iat)
+         do ish = 1, nShell(izp)
+            self%shellGam(ii+ish) = input%thirdOrderShell(ish, izp) + inputPerAtom%thirdOrderShell(ish, iat)      ! Done
+         end do
+         ii = ii + nShell(izp)
+      end do
+   else if (allocated(input%thirdOrderAtom)) then
+      allocate(self%atomicGam(nat))
+      do iat = 1, nat
+         izp = num(iat)
+         self%atomicGam(iat) = input%thirdOrderAtom(izp) + inputPerAtom%thirdOrderAtom(iat) ! Done
+      end do
+   end if
+
+end subroutine initThirdOrderPerAtom
 
 
 pure subroutine addShift(self, qat, qsh, atomicShift, shellShift)

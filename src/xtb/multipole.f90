@@ -36,6 +36,7 @@ module xtb_xtb_multipole
 
    interface init
       module procedure :: initMultipole
+      module procedure :: initMultipolePerAtom
    end interface init
 
 
@@ -50,7 +51,21 @@ subroutine initMultipole(self, input)
 
    self%TMultipoleData = input
 
+
 end subroutine initMultipole
+
+subroutine initMultipolePerAtom(self, input, inputPerAtom)
+
+   type(TxTBMultipole), intent(out) :: self
+
+   type(TMultipoleData), intent(in) :: input, inputPerAtom
+
+   self%TMultipoleData = input
+
+   ! self%TMultipoleDataPerAtom = inputPerAtom
+
+end subroutine initMultipolePerAtom
+
 
 
 end module xtb_xtb_multipole

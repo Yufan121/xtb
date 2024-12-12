@@ -793,8 +793,11 @@ pure function shellPolyPerAtom(iPoly,jPoly,iPolyPerAtom,jPolyPerAtom,iRad,jRad,x
 
    r=rab/rr
 
-   rf1=1.0d0+0.01*(iPoly)*r**a
-   rf2=1.0d0+0.01*(jPoly)*r**a
+   ! iPoly = iPoly + iPolyPerAtom ! Done
+   ! jPoly = jPoly + jPolyPerAtom ! Done
+
+   rf1=1.0d0+0.01*(iPoly + iPolyPerAtom)*r**a   ! Done
+   rf2=1.0d0+0.01*(jPoly + jPolyPerAtom)*r**a   ! Done
 
    shellPolyPerAtom= rf1*rf2 ! this is the output
 

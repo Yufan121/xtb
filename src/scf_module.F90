@@ -44,7 +44,7 @@ module xtb_scf
    use xtb_xtb_coulomb
    use xtb_xtb_dispersion
    use xtb_xtb_hamiltonian, only : getSelfEnergy, build_SDQH0, build_SDQH0_perAtom, build_dSDQH0, &
-      & build_dSdQH0_noreset, count_dpint, count_qpint
+      & build_dSdQH0_noreset, build_dSDQH0_noreset_PerAtom, count_dpint, count_qpint
    use xtb_xtb_hamiltonian_gpu, only: build_SDQH0_gpu, build_dSDQH0_gpu
    use xtb_xtb_multipole
    use xtb_paramset, only : tmmetal
@@ -406,8 +406,9 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    endif
 
    ! setup isotropic electrostatics
-   call init(ies, xtbData%coulomb, xtbData%nshell, mol%at)        ! TODO
-
+   ! calling xtb_xtb_coulomb::initcoulomb then xtb_xtb_thirdorder::initthirdorder
+   call init(ies, xtbData%coulomb, xtbData%perAtomXtbData%coulomb, xtbData%nshell, mol%at)        ! TODO
+   
    nid = maxval(mol%id)
    allocate(idnum(nid))
    do ii = 1, nId
@@ -426,7 +427,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    else !GFN2
       gav = gamAverage%arithmetic
    endif
-   call init(coulomb, env, mol, gav, xtbData%coulomb%shellHardness, &
+   call init(coulomb, env, mol, gav, xtbData%coulomb%shellHardness, xtbData%perAtomXtbData%coulomb%shellHardness, &
       & xtbData%coulomb%gExp, num=idnum, nshell=xtbData%nShell)         ! TODO
 
    call env%check(exitRun)
@@ -570,7 +571,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
          return
       end if
       allocate(aes)
-      call init(aes, xtbData%multipole)
+      call init(aes, xtbData%multipole) !, xtbData%perAtomXtbData%multipole)
 
       ! allocate arrays for lists and fill (to exploit sparsity)
       allocate(mdlst(2,ndp),mqlst(2,nqp))
@@ -725,7 +726,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
          H(j,i) = H0(k)*evtoau/S(j,i)
          H(i,j) = H(j,i)
       enddo
-      call build_dSDQH0_noreset(xtbData%nShell, xtbData%hamiltonian, selfEnergy, &
+      call build_dSDQH0_noreset_PerAtom(xtbData%nShell, xtbData%hamiltonian, xtbData%perAtomXtbData%hamiltonian, selfEnergy, &
          & dSEdcn, intcut, mol%n, basis%nao, basis%nbf, mol%at, mol%xyz, &
          & basis%caoshell, basis%saoshell, basis%nprim, basis%primcount, &
          & basis%alp, basis%cont, H, S, wfn%p, Pew, shellShift, vs, vd, vq, &
