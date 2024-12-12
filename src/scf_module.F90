@@ -81,13 +81,13 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
 
 ! ========================================================================
 ! ========================================================================
-   use xtb_aespot,    only : setdqlist,get_radcn,setvsdq, &
+   use xtb_aespot,    only : setdqlist,get_radcn,get_radcn_PerAtom,setvsdq, &
    &                     mmomgabzero,mmompop,molmom
    use xtb_disp_dftd4, only: build_wdispmat,d4dim,d4,disppot,p_refq_gfn2xtb, &
    &                     mdisp,prmolc6,edisp_scc,d4_gradient
    use xtb_disp_ncoord,    only : dncoord_gfn,ncoord_d4,dncoord_d3
    use xtb_embedding, only : read_pcem,jpot_pcem_gfn1,jpot_pcem_gfn2
-   use xtb_aespot,    only : dradcn,aniso_grad,setdvsdq
+   use xtb_aespot,    only : dradcn,aniso_grad,setdvsdq,setdvsdqPerAtom
    use xtb_disp_ncoord,    only : dncoord_gfn,dncoord_d3
    use xtb_embedding, only : pcem_grad_gfn1,pcem_grad_gfn2
    use xtb_solv_cosmo, only : TCosmo
@@ -407,7 +407,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
 
    ! setup isotropic electrostatics
    ! calling xtb_xtb_coulomb::initcoulomb then xtb_xtb_thirdorder::initthirdorder
-   call init(ies, xtbData%coulomb, xtbData%perAtomXtbData%coulomb, xtbData%nshell, mol%at)        ! TODO
+   call init(ies, xtbData%coulomb, xtbData%perAtomXtbData%coulomb, xtbData%nshell, mol%at)        ! done
    
    nid = maxval(mol%id)
    allocate(idnum(nid))
@@ -533,6 +533,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
          &  cn, dcndr, dcndL, ed, gradient, sigma)
    else
       allocate(scD4)
+      ! call xtb_xtb_dispersion::initdispersion
       call init(scD4, xtbData%dispersion, mol)        ! TODO
    endif
 
@@ -571,17 +572,17 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
          return
       end if
       allocate(aes)
-      call init(aes, xtbData%multipole) !, xtbData%perAtomXtbData%multipole)
+      call init(aes, xtbData%multipole, xtbData%perAtomXtbData%multipole)     ! done, seems no too much to change in init aes
 
       ! allocate arrays for lists and fill (to exploit sparsity)
       allocate(mdlst(2,ndp),mqlst(2,nqp))
-      call setdqlist(basis%nao,ndp,nqp,neglect,dpint,qpint,mdlst,mqlst)
+      call setdqlist(basis%nao,ndp,nqp,neglect,dpint,qpint,mdlst,mqlst) ! No need
       ! set up 1/R^n * damping function terms
       ii=mol%n*(mol%n+1)/2
       allocate(aes%gab3(mol%n, mol%n),aes%gab5(mol%n, mol%n),radcn(mol%n))
-      call get_radcn(xtbData%multipole,mol%n,mol%at,cn,aes%cnShift, &
+      call get_radcn_PerAtom(xtbData%multipole,xtbData%perAtomXtbData%multipole,mol%n,mol%at,cn,aes%cnShift, &   ! TODO CN-dependet atomic radii, NOT IMPLEMENTED YET
          & aes%cnExp,aes%cnRMax,radcn)
-      call mmomgabzero(mol%n,mol%at,mol%xyz,aes%dipDamp, &
+      call mmomgabzero(mol%n,mol%at,mol%xyz,aes%dipDamp, &        ! no need
          & aes%quadDamp,radcn,aes%gab3,aes%gab5) ! zero damping
    end if
 
@@ -633,7 +634,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    call scc(env,xtbData,solver,mol%n,wfn%nel,wfn%nopen,basis%nao,ndp,nqp,nmat,basis%nshell, &
       &     mol%at,matlist,mdlst,mqlst,basis%aoat2,basis%ao2sh,basis%ash, &
       &     wfn%q,wfn%dipm,wfn%qp,qq,qlmom,wfn%qsh,zsh, &
-      &     mol%xyz,aes, &
+      &     mol%xyz,aes, xtbData%perAtomXtbData%multipole,& ! Done
       &     cm5,cm5a,gsolv,solvation, &
       &     scD4, &
       &     broy,set%broydamp,damp0, &
@@ -698,7 +699,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       ! VS, VD, VQ-dependent potentials are changed w.r.t. SCF,
       ! since moment integrals are now computed with origin at
       ! respective atoms
-      call setdvsdq(xtbData%multipole, mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, &
+      call setdvsdqPerAtom(xtbData%multipole, xtbData%perAtomXtbData%multipole, mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, &
          & wfn%qp, aes%gab3, aes%gab5, vs, vd, vq)             ! TODO
    end if
 

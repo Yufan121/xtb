@@ -31,6 +31,8 @@ module xtb_xtb_multipole
 
       real(wp), allocatable :: gab5(:, :)
 
+      type(TMultipoleData), allocatable :: multipoledataPerAtom
+
    end type
 
 
@@ -62,7 +64,8 @@ subroutine initMultipolePerAtom(self, input, inputPerAtom)
 
    self%TMultipoleData = input
 
-   ! self%TMultipoleDataPerAtom = inputPerAtom
+   allocate(self%multipoledataPerAtom)
+   self%multipoledataPerAtom = inputPerAtom
 
 end subroutine initMultipolePerAtom
 

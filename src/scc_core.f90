@@ -229,7 +229,7 @@ end subroutine addAnisotropicH1
 subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
       &        at,matlist,mdlst,mqlst,aoat2,ao2sh,ash, &
       &        q,dipm,qp,qq,qlmom,qsh,zsh, &
-      &        xyz,aes, &
+      &        xyz,aes,aesPerAtom, &
       &        cm5,cm5a,gborn,solvation, &
       &        scD4, &
       &        broy,broydamp,damp0, &
@@ -244,7 +244,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
 
    use xtb_disp_dftd4,  only: disppot,edisp_scc
    use xtb_aespot, only : gfn2broyden_diff,gfn2broyden_out,gfn2broyden_save, &
-   &                  mmompop,aniso_electro,setvsdq
+   &                  mmompop,aniso_electro,aniso_electroPerAtom,setvsdq,setvsdqPerAtom
    use xtb_embedding, only : electro_pcem
 
    character(len=*), parameter :: source = 'scc_core'
@@ -292,6 +292,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
 !! ------------------------------------------------------------------------
 !  anisotropic electrostatic
    type(TxTBMultipole), intent(in), optional :: aes
+   type(TMultipoleData), intent(in), optional :: aesPerAtom
    real(wp),intent(in)    :: xyz(3,n)
    real(wp), allocatable :: vs(:)
    real(wp), allocatable :: vd(:, :)
@@ -405,7 +406,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
    call ies%addShift(q, qsh, atomicShift, shellShift)
    ! compute potential intermediates
    if (present(aes)) then
-      call setvsdq(aes,n,at,xyz,q,dipm,qp,aes%gab3,aes%gab5,vs,vd,vq)
+      call setvsdqPerAtom(aes,aesPerAtom, n,at,xyz,q,dipm,qp,aes%gab3,aes%gab5,vs,vd,vq)
    end if
    ! Solvation contributions
    if (allocated(solvation)) then
@@ -494,7 +495,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
    if (present(aes)) then
       call mmompop(n,ndim,aoat2,xyz,p,s,dpint,qpint,dipm,qp)
       ! evaluate energy
-      call aniso_electro(aes,n,at,xyz,q,dipm,qp,aes%gab3,aes%gab5,eaes,epol)
+      call aniso_electroPerAtom(aes,aesPerAtom,n,at,xyz,q,dipm,qp,aes%gab3,aes%gab5,eaes,epol)
       eel=eel+eaes+epol
    end if
 

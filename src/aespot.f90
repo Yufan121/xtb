@@ -327,7 +327,7 @@ subroutine aniso_electro(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,e,epol)
             tt3 = tt3+qp1(kl)*qp1(kl)
          enddo
       enddo
-      eq = aesData%dipKernel(at(i))*tt+tt3*aesData%quadKernel(at(i))
+      eq = aesData%dipKernel(at(i))*tt+tt3*aesData%quadKernel(at(i))    ! TODO
       ! acc atomic
       epol = epol+eq
       ! ---
@@ -383,6 +383,127 @@ subroutine aniso_electro(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,e,epol)
    ! acc& at, xyz, q, dipm, qp, gab3, gab5)
 
 end subroutine aniso_electro
+
+
+! distributed atomic multipole moment interactions: all interactions up to r**-3
+! energy evaluation
+! nat         : # of atoms
+! xyz(3,nat)  : cartesian coordinates
+! q(nat)      : atomic partial charges
+! dipm(3,nat) : cumulative atomic dipole moments (x,y,z)
+! qp(6,nat)   : traceless(!) cumulative atomic quadrupole moments (xx,xy,yy,xz,yz,zz)
+! gab3,gab5   : damped R**-3 and R**-5 Coulomb laws, dimension: nat*(nat+1)/2
+!               multiplication with numerator then leads to R**-2 and R**-3 decay, respectively
+! e           : E_AES
+subroutine aniso_electroPerAtom(aesData,aesDataPerAtom,nat,at,xyz,q,dipm,qp,gab3,gab5,e,epol)
+   use xtb_lin, only : lin
+   implicit none
+   class(TMultipoleData), intent(in) :: aesData,aesDataPerAtom
+   integer, intent(in) :: nat,at(:)
+   real(wp), intent(in) :: xyz(:,:),q(:)
+   real(wp), intent(inout) :: e
+   real(wp) qp1(6),rr(3),dp1(3),rij(3)
+   real(wp) edd,e01,e02,e11,r2,tt,tt3,q1,qs2
+   real(wp) ed,eq,epol
+   ! stuff for potential
+   real(wp), intent(in) :: gab3(:,:),gab5(:,:)
+   real(wp), intent(in) :: dipm(:,:),qp(:,:)
+   integer, parameter :: idx(3, 3) = reshape([1, 2, 4, 2, 3, 5, 4, 5, 6], [3, 3])
+
+   integer i,j,k,l,m,ki,kj,kl
+
+   ! acc enter data copyin(at, xyz, q, dipm, qp, gab3, gab5, &
+   ! acc& aesData, aesData%dipKernel(:), aesData%quadKernel(:))
+
+   ! acc kernels
+   e = 0.0_wp
+   epol = 0.0_wp
+   e01 = 0.0_wp
+   e02 = 0.0_wp
+   e11 = 0.0_wp
+   ! acc end kernels
+
+   ! acc parallel private(qp1, rr, dp1, rij)
+
+   ! acc loop gang
+   do i = 1, nat
+      q1 = q(i)
+      rr(1:3) = xyz(1:3,i)
+      dp1(1:3) = dipm(1:3,i)
+      qp1(1:6) = qp(1:6,i)
+      ! test: semilocal CT correction
+      ! dipole
+      tt = dp1(1)*dp1(1)+dp1(2)*dp1(2)+dp1(3)*dp1(3)
+      ! qpole
+      tt3 = 0.0_wp
+      ! acc loop seq
+      do k = 1,3
+         ! acc loop seq
+         do l = 1,3
+            kl = idx(l,k)
+            tt3 = tt3+qp1(kl)*qp1(kl)
+         enddo
+      enddo
+      eq = (aesData%dipKernel(at(i)) + aesDataPerAtom%dipKernel(i))*tt+tt3*(aesData%quadKernel(at(i)) + aesDataPerAtom%quadKernel(i))    ! TODO
+      ! acc atomic
+      epol = epol+eq
+      ! ---
+   enddo
+
+   ! acc loop gang collapse(2)
+   do i = 1, nat
+      do j = 1, nat
+         if (j >= i) cycle
+         q1 = q(i)
+         rr(1:3) = xyz(1:3,i)
+         dp1(1:3) = dipm(1:3,i)
+         qp1(1:6) = qp(1:6,i)
+         kj = i*(i-1)/2 + j
+         rij(1:3) = xyz(1:3,j)-rr(1:3)
+         r2 = sum(rij*rij)
+         ed = 0.0_wp
+         eq = 0.0_wp
+         edd = 0.0_wp
+         !           dipole - charge
+         ! acc loop seq
+         do k = 1,3
+            ed = ed+q(j)*dp1(k)*rij(k)
+            ed = ed-dipm(k,j)*q1*rij(k)
+            !              dip-dip & charge-qpole
+            ! acc loop seq
+            do l = 1,3
+               kl = idx(l,k)
+               tt = rij(l)*rij(k)
+               tt3 = 3.0_wp*tt
+               eq = eq+q(j)*qp1(kl)*tt
+               eq = eq+qp(kl,j)*q1*tt
+               edd = edd-dipm(k,j)*dp1(l)*tt3
+            enddo
+            !              diagonal dip-dip term
+            edd = edd+dipm(k,j)*dp1(k)*r2
+         enddo
+         ! acc atomic
+         e01 = e01+ed*gab3(j,i)
+         ! acc atomic
+         e02 = e02+eq*gab5(j,i)
+         ! acc atomic
+         e11 = e11+edd*gab5(j,i)
+      enddo
+   enddo
+   ! acc end parallel
+   ! acc kernels
+   e = e01 + e02 + e11
+   ! acc end kernels
+   !     write(*,'(''d,q,dd'',3f9.5)')  e01,e02,e11
+   !      write(*,*) ' semilocal CT corr.: ',epol
+   ! acc exit data delete(aesData, aesData%dipKernel(:), aesData%quadKernel(:), &
+   ! acc& at, xyz, q, dipm, qp, gab3, gab5)
+
+end subroutine aniso_electroPerAtom
+
+
+
+
 
 ! aniso-electro from Fock matrix elements
 ! nao              : # of spherical AOs (SAOs)
@@ -523,7 +644,7 @@ subroutine setvsdq(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
       vq(1:6,i) = qtmp(1:6)              ! qpints from atom i
       ! --- CT correction terms
       qs1 = aesData%dipKernel(at(i))*2.0_wp
-      qs2 = aesData%quadKernel(at(i))*6.0_wp ! qpole pot prefactors
+      qs2 = aesData%quadKernel(at(i))*6.0_wp ! qpole pot prefactors     
       t3a = 0.0_wp
       t2a = 0.0_wp
       do l1 = 1,3
@@ -549,7 +670,7 @@ subroutine setvsdq(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
       enddo
       vs(i) = vs(i)+t3a
       ! trace removal
-      t2a = t2a*aesData%quadKernel(at(i))
+      t2a = t2a*aesData%quadKernel(at(i))          
       do l1 = 1,3
          vq(l1,i) = vq(l1,i)+t2a
          vd(l1,i) = vd(l1,i)-2.0_wp*ra(l1)*t2a
@@ -561,6 +682,142 @@ subroutine setvsdq(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
    !      call prmat(6,vs,nat,0,'vs')
 
 end subroutine setvsdq
+
+
+
+! set-up potential terms v, which are proportional to s, d, or q-integrals
+! it is to be multiplied with Sji when stting up Fji (hence, termed vs)
+! comes essentially at no cost, once cumulative atomic quadrupole moments are available.
+! NEW: the CAMMs were already scaled by scalecamm, but the corresponding potential terms
+!      including shift terms need to be scaled
+! nat         : # of atoms
+! at(nat)     : atom-to-element identifier
+! xyz(3,nat)  : cartesian coordinates
+! q(nat)      : atomic partial charges
+! dipm(3,nat) : atomic dipole moments
+! qp(6,nat)   : traceless(!) cumulative atomic quadrupole moments (xx,xy,yy,xz,yz,zz)
+! gab3,gab5   : damped Coulomb laws, dimension: nat*(nat+1)/2
+! vs(nat)     : s-proportional potential from all atoms acting on atom i
+! vd(3,nat)   : dipint-proportional potential from all atoms acting on atom i
+! vq(6,nat)   : qpole-int proportional potential from all atoms acting on atom i
+subroutine setvsdqPerAtom(aesData,aesDataPerAtom,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
+   use xtb_lin, only : lin
+   implicit none
+   class(TMultipoleData), intent(in) :: aesData, aesDataPerAtom
+   integer, intent(in) :: nat,at(:)
+   real(wp), intent(in) ::  q(:),dipm(:,:)
+   real(wp), intent(in) ::  xyz(:,:),qp(:,:)
+   real(wp), intent(in) :: gab3(:,:)
+   real(wp), intent(in) :: gab5(:,:)
+   real(wp), intent(out) :: vs(:),vd(:,:),vq(:,:)
+   real(wp) ra(3),dra(3),rb(3),stmp,dum3a,dum5a,t1a,t2a,t3a,t4a,r2a
+   real(wp) r2ab,t1b,t2b,t3b,t4b,dum3b,dum5b,dtmp(3),qtmp(6),g3,g5
+   real(wp) qs1,qs2
+   integer i,j,k,l1,l2,ll,m,mx,ki,kj
+   vs = 0.0_wp
+   vd = 0.0_wp
+   vq = 0.0_wp
+   ! set up overlap proportional potential
+   do i = 1,nat
+      ra(1:3) = xyz(1:3,i)
+      stmp = 0.0_wp
+      dtmp = 0.0_wp
+      qtmp = 0.0_wp
+      do j = 1,nat
+         g3 = gab3(j,i)
+         g5 = gab5(j,i)
+         rb(1:3) = xyz(1:3,j)
+         dra(1:3) = ra(1:3)-rb(1:3)
+         dum3a = 0.0_wp ! collect gab3 dependent terms
+         dum5a = 0.0_wp ! collect gab5 dependent terms
+         r2a = 0.0_wp
+         r2ab = 0.0_wp
+         t1a = 0.0_wp
+         t2a = 0.0_wp
+         t3a = 0.0_wp
+         t4a = 0.0_wp
+         ll = 0
+         do l1 = 1,3
+            ! potential from dipoles
+            r2a = r2a+ra(l1)*ra(l1)      ! R_C * R_C
+            r2ab = r2ab+dra(l1)*dra(l1)  ! R_AC * R_AC
+            t1a = t1a+ra(l1)*dra(l1)     ! R_C * R_AC  : for dip-q (q-shift) and dip-dip (q-shift)
+            t2a = t2a+dipm(l1,j)*dra(l1) ! mu_A * R_AC : for q-dip and dip-dip (q-shift)
+            t3a = t3a+ra(l1)*dipm(l1,j)  ! R_C * mu_A  : for diag. dip-dip (q-shift)
+            t4a = t4a+dra(l1)*dra(l1)*ra(l1)*ra(l1) ! (R_C o R_AC)**"2(square of Hadamard product) :
+            ! results from trace remove from q-pole (q-shift)
+            do l2 = 1,3
+               ll = lin(l1,l2)
+               ! potential from quadrupoles
+               dum5a = dum5a-qp(ll,j)*dra(l1)*dra(l2) &
+                  & -1.50_wp*q(j)*dra(l1)*dra(l2)*ra(l1)*ra(l2)
+               if(l2.ge.l1) cycle
+               ki = l1+l2+1
+               qtmp(ki) = qtmp(ki)-3.0_wp*q(j)*g5*dra(l2)*dra(l1)
+            enddo
+            qtmp(l1) = qtmp(l1)-1.50_wp*q(j)*g5*dra(l1)*dra(l1)
+         enddo
+         !
+         ! set up S-dependent potential
+         dum3a = -t1a*q(j)-t2a ! dip-q (q-shift) and q-dip
+         dum5a = dum5a+t3a*r2ab-3.0_wp*t1a*t2a & !dip-dip (q-shift terms)
+            & +0.50_wp*q(j)*r2a*r2ab !qpole-q (q-shift, trace removal)
+         stmp = stmp+dum5a*g5+dum3a*g3
+         do l1 = 1,3
+            dum3a = dra(l1)*q(j)
+            dum5a = 3.0_wp*dra(l1)*t2a &           ! dipint-dip
+               & -r2ab*dipm(l1,j) &            ! dipint-dip (diagonal)
+               & -q(j)*r2ab*ra(l1) &           ! qpole-q (dipint-shift, trace removal)
+               & +3.0_wp*q(j)*dra(l1)*t1a   ! qpole-q (dipint-shift)
+            dtmp(l1) = dtmp(l1)+dum3a*g3+dum5a*g5
+            qtmp(l1) = qtmp(l1)+0.50_wp*r2ab*q(j)*g5 !remove trace term
+         enddo
+      enddo
+      vs(i) = stmp                       ! q terms
+      vd(1:3,i) = dtmp(1:3)              ! dipints from atom i
+      vq(1:6,i) = qtmp(1:6)              ! qpints from atom i
+      ! --- CT correction terms
+      qs1 = (aesData%dipKernel(at(i)) + aesDataPerAtom%dipKernel(i))*2.0_wp
+      qs2 = (aesData%quadKernel(at(i)) + aesDataPerAtom%quadKernel(i))*6.0_wp ! qpole pot prefactors     ! done
+      t3a = 0.0_wp
+      t2a = 0.0_wp
+      do l1 = 1,3
+         ! potential from dipoles
+         t3a = t3a+ra(l1)*dipm(l1,i)*qs1  ! R_C * mu_C  : for diag. dip-dip
+         vd(l1,i) = vd(l1,i)-qs1*dipm(l1,i)
+         do l2 = 1,l1-1
+            ! potential from quadrupoles
+            ll = lin(l1,l2)
+            ki = l1+l2+1
+            vq(ki,i) = vq(ki,i)-qp(ll,i)*qs2
+            t3a = t3a-ra(l1)*ra(l2)*qp(ll,i)*qs2
+            vd(l1,i) = vd(l1,i)+ra(l2)*qp(ll,i)*qs2
+            vd(l2,i) = vd(l2,i)+ra(l1)*qp(ll,i)*qs2
+         enddo
+         ! diagonal
+         ll = lin(l1,l1)
+         vq(l1,i) = vq(l1,i)-qp(ll,i)*qs2*0.50_wp
+         t3a = t3a-ra(l1)*ra(l1)*qp(ll,i)*qs2*0.50_wp
+         vd(l1,i) = vd(l1,i)+ra(l1)*qp(ll,i)*qs2
+         ! collect trace removal terms
+         t2a = t2a+qp(ll,i)
+      enddo
+      vs(i) = vs(i)+t3a
+      ! trace removal
+      t2a = t2a*(aesData%quadKernel(at(i)) + aesDataPerAtom%quadKernel(i))       ! done         
+      do l1 = 1,3
+         vq(l1,i) = vq(l1,i)+t2a
+         vd(l1,i) = vd(l1,i)-2.0_wp*ra(l1)*t2a
+         vs(i) = vs(i)+t2a*ra(l1)*ra(l1)
+      enddo
+      ! ---
+   enddo
+
+   !      call prmat(6,vs,nat,0,'vs')
+
+end subroutine setvsdqPerAtom
+
+
 
 ! set-up potential terms v used for nuclear gradients
 ! here, the shift terms are removed, since we use multipole derivatives w/ origin at the atoms
@@ -636,7 +893,7 @@ subroutine setdvsdq(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
       vq(1:6,i) = qtmp(1:6)
       ! --- CT correction terms
       qs1 = aesData%dipKernel(at(i))*2.0_wp
-      qs2 = aesData%quadKernel(at(i))*6.0_wp ! qpole pot prefactors
+      qs2 = aesData%quadKernel(at(i))*6.0_wp ! qpole pot prefactors     
       t2a = 0.0_wp
       do l1 = 1,3
          ! potential from dipoles
@@ -653,7 +910,7 @@ subroutine setdvsdq(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
          t2a = t2a+qp(ll,i)
       enddo
       ! trace removal
-      t2a = t2a*aesData%quadKernel(at(i))
+      t2a = t2a*aesData%quadKernel(at(i))       
       do l1 = 1,3
          vq(l1,i) = vq(l1,i)+t2a
       enddo
@@ -665,6 +922,112 @@ subroutine setdvsdq(aesData,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
    !      call prmat(6,vs,nat,0,'vs')
 
 end subroutine setdvsdq
+
+
+! set-up potential terms v used for nuclear gradients
+! here, the shift terms are removed, since we use multipole derivatives w/ origin at the atoms
+! nat         : # of atoms
+! xyz(3,nat)  : cartesian coordinates
+! q(nat)      : atomic partial charges
+! dipm(3,nat) : atomic dipole moments
+! qp(6,nat)   : traceless(!) cumulative atomic quadrupole moments (xx,xy,yy,xz,yz,zz)
+! gab3,gab5   : damped Coulomb laws, dimension: nat*(nat+1)/2
+! vs(nat)     : s-proportional potential from all atoms acting on atom i
+! vd(3,nat)   : dipint-proportional potential from all atoms acting on atom i
+! vq(6,nat)   : qpole-int proportional potential from all atoms acting on atom i
+subroutine setdvsdqPerAtom(aesData,aesDataPerAtom,nat,at,xyz,q,dipm,qp,gab3,gab5,vs,vd,vq)
+   use xtb_lin, only : lin
+   implicit none
+   class(TMultipoleData), intent(in) :: aesData,aesDataPerAtom
+   integer, intent(in) :: nat,at(:)
+   real(wp), intent(in) ::  q(:),dipm(:,:)
+   real(wp), intent(in) ::  xyz(:,:),qp(:,:)
+   real(wp), intent(in) :: gab3(:,:)
+   real(wp), intent(in) :: gab5(:,:)
+   real(wp), intent(out) :: vs(:),vd(:,:),vq(:,:)
+   real(wp) ra(3),dra(3),rb(3),stmp,dum3a,dum5a,t1a,t2a,t3a,t4a,r2a
+   real(wp) r2ab,t1b,t2b,t3b,t4b,dum3b,dum5b,dtmp(3),qtmp(6),g3,g5
+   real(wp) qs1,qs2
+   integer i,j,k,l1,l2,ll,m,mx,ki,kj
+   vs = 0.0_wp
+   vd = 0.0_wp
+   vq = 0.0_wp
+   ! set up overlap proportional potential
+   do i = 1,nat
+      ra(1:3) = xyz(1:3,i)
+      stmp = 0.0_wp
+      dtmp = 0.0_wp
+      qtmp = 0.0_wp
+      do j = 1,nat
+         g3 = gab3(j,i)
+         g5 = gab5(j,i)
+         rb(1:3) = xyz(1:3,j)
+         dra(1:3) = ra(1:3)-rb(1:3)
+         dum3a = 0.0_wp ! collect gab3 dependent terms
+         dum5a = 0.0_wp ! collect gab5 dependent terms
+         r2a = 0.0_wp
+         r2ab = 0.0_wp
+         t2a = 0.0_wp
+         ll = 0
+         do l1 = 1,3
+            ! potential from dipoles
+            r2ab = r2ab+dra(l1)*dra(l1)  ! R_AC * R_AC
+            t2a = t2a+dipm(l1,j)*dra(l1) ! mu_A * R_AC : for q-dip and dip-dip (q-shift)
+            do l2 = 1,3
+               ll = lin(l1,l2)
+               ! potential from quadrupoles
+               dum5a = dum5a-qp(ll,j)*dra(l1)*dra(l2)
+               if(l2.ge.l1) cycle
+               ki = l1+l2+1
+               qtmp(ki) = qtmp(ki)-3.0_wp*q(j)*g5*dra(l2)*dra(l1)
+            enddo
+            qtmp(l1) = qtmp(l1)-1.50_wp*q(j)*g5*dra(l1)*dra(l1)
+         enddo
+         dum3a = -t2a ! q-dip ! w/o shift terms
+         stmp = stmp+dum3a*g3+dum5a*g5
+         do l1 = 1,3
+            dum3a = dra(l1)*q(j) ! w/o shift terms
+            dum5a = 3.0_wp*dra(l1)*t2a & ! dipint-dip
+               & -r2ab*dipm(l1,j)  ! dipint-dip (diagonal)
+            dtmp(l1) = dtmp(l1)+dum3a*g3+dum5a*g5
+            qtmp(l1) = qtmp(l1)+0.50_wp*r2ab*q(j)*g5 !remove trace term
+         enddo
+      enddo
+      vs(i) = stmp
+      vd(1:3,i) = dtmp(1:3)
+      vq(1:6,i) = qtmp(1:6)
+      ! --- CT correction terms
+      qs1 = (aesData%dipKernel(at(i)) + aesDataPerAtom%dipKernel(i))*2.0_wp
+      qs2 = (aesData%quadKernel(at(i)) + aesDataPerAtom%quadKernel(i))*6.0_wp ! qpole pot prefactors     ! Done
+      t2a = 0.0_wp
+      do l1 = 1,3
+         ! potential from dipoles
+         vd(l1,i) = vd(l1,i)-qs1*dipm(l1,i)
+         do l2 = 1,l1-1
+            ! potential from quadrupoles
+            ll = lin(l1,l2)
+            ki = l1+l2+1
+            vq(ki,i) = vq(ki,i)-qp(ll,i)*qs2
+         enddo
+         ll = lin(l1,l1)
+         vq(l1,i) = vq(l1,i)-qp(ll,i)*qs2*0.50_wp
+         ! collect trace removal terms
+         t2a = t2a+qp(ll,i)
+      enddo
+      ! trace removal
+      t2a = t2a*(aesData%quadKernel(at(i)) + aesDataPerAtom%quadKernel(i))       ! done
+      do l1 = 1,3
+         vq(l1,i) = vq(l1,i)+t2a
+      enddo
+      ! ---
+
+
+   enddo
+
+   !      call prmat(6,vs,nat,0,'vs')
+
+end subroutine setdvsdqPerAtom
+
 
 ! molmom: computes molecular multipole moments from CAMM
 ! n           : # of atoms
@@ -994,6 +1357,23 @@ subroutine get_radcn(aesData,n,at,cn,shift,expo,rmax,radcn)
       radcn(i) = t2
    enddo
 end subroutine get_radcn
+
+subroutine get_radcn_PerAtom(aesData,aesDataPerAtom,n,at,cn,shift,expo,rmax,radcn)  ! Not 
+   implicit none
+   class(TMultipoleData), intent(in) :: aesData, aesDataPerAtom
+   integer, intent (in) :: n,at(:)
+   real(wp), intent (in)  :: cn(:),shift,expo,rmax
+   real(wp), intent (out) :: radcn(:)
+   real(wp) rco,t1,t2
+   integer i,j
+   do i = 1,n
+      rco = aesData%multiRad(at(i))             ! base radius of element
+      t1 =cn(i)-aesData%valenceCN(at(i))-shift  ! CN - VALCN - SHIFT
+      t2 =rco +(rmax-rco)/(1.0_wp+exp(-expo*t1))
+      radcn(i) = t2
+   enddo
+end subroutine get_radcn_PerAtom
+
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !     derivative of CN-dependet atomic radii w.r.t. other atoms
 !     n : # of atoms
