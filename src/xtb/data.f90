@@ -829,7 +829,7 @@ end subroutine initRepulsion
 
 
 subroutine initCoulomb(self, nShell, chemicalHardness, shellHardness, &
-      & thirdOrderAtom, electronegativity, kCN, chargeWidth)
+      & thirdOrderAtom, electronegativity, kCN, chargeWidth)   ! Not used
 
    !> Data instance
    type(TCoulombData), intent(out) :: self

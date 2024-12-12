@@ -126,7 +126,7 @@ subroutine getSelfEnergyFlatPerAtom(hData, hDataPerAtom, nShell, at, cn, qat, se
       do iAt = 1, size(cn)
          iZp = at(iAt)
          do iSh = 1, nShell(iZp)
-            selfEnergy(ind+iSh) = selfEnergy(ind+iSh) +  hDataPerAtom%selfEnergy(iSh, iAt)  &     ! Done
+            selfEnergy(ind+iSh) = selfEnergy(ind+iSh)  &     ! Done
                & - ( hData%kCN(iSh, iZp) + hDataPerAtom%kCN(iSh, iAt)) * cn(iAt)         ! Done
             dSEdcn(ind+iSh) = - (hData%kCN(iSh, iZp) + hDataPerAtom%kCN(iSh, iAt))         ! Done
          end do
@@ -222,7 +222,7 @@ subroutine getSelfEnergy2DPerAtom(hData, hDataPerAtom, nShell, at, cn, qat, self
       do iAt = 1, size(cn)
          iZp = at(iAt)
          do iSh = 1, nShell(iZp)
-            selfEnergy(iSh, iAt) = selfEnergy(iSh, iAt) +  hDataPerAtom%selfEnergy(iSh, iAt)            &      ! Done
+            selfEnergy(iSh, iAt) = selfEnergy(iSh, iAt)             &      ! Done
                & - (hData%kCN(iSh, iZp) + hDataPerAtom%kCN(iSh, iAt)) * cn(iAt)
             dSEdcn(iSh, iAt) = -(hData%kCN(iSh, iZp)+ hDataPerAtom%kCN(iSh, iAt))
          end do

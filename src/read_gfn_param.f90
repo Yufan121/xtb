@@ -414,7 +414,7 @@ subroutine read2Param &
       !!! EndYufan loop structure
 
       xtbData%perAtomXtbData%nShell = nShellPerAtom ! 1-dim array
-
+      
       xtbData%perAtomXtbData%hamiltonian%electronegativity = electronegativityPerAtom(:)
       ! xtbData%perAtomXtbData%hamiltonian%atomicRad = atomicRad(:)
       xtbData%perAtomXtbData%hamiltonian%shellPoly = shellPolyPerAtom(:, :) ! Yufan: element parameter
