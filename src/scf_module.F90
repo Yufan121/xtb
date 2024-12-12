@@ -406,7 +406,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    endif
 
    ! setup isotropic electrostatics
-   call init(ies, xtbData%coulomb, xtbData%nshell, mol%at)
+   call init(ies, xtbData%coulomb, xtbData%nshell, mol%at)        ! TODO
 
    nid = maxval(mol%id)
    allocate(idnum(nid))
@@ -427,7 +427,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       gav = gamAverage%arithmetic
    endif
    call init(coulomb, env, mol, gav, xtbData%coulomb%shellHardness, &
-      & xtbData%coulomb%gExp, num=idnum, nshell=xtbData%nShell)
+      & xtbData%coulomb%gExp, num=idnum, nshell=xtbData%nShell)         ! TODO
 
    call env%check(exitRun)
    if (exitRun) then
@@ -446,7 +446,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
             & mol%xyz,xtbData%coulomb%gExp,Vpc)
       else ! GFN2
          call jpot_pcem_gfn2(xtbData%coulomb,mol%n,pcem,xtbData%nshell,mol%at, &
-            & mol%xyz,Vpc)
+            & mol%xyz,Vpc)             ! TODO
       endif
    endif
 
@@ -495,7 +495,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    ep = 0.0_wp
    call latp%getLatticePoints(trans, 40.0_wp)
    call repulsionEnGrad(mol, xtbData%repulsion, trans, 40.0_wp, &
-      & ep, gradient, sigma)
+      & ep, gradient, sigma)              ! TODO
 
 
    ! ------------------------------------------------------------------------
@@ -532,7 +532,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
          &  cn, dcndr, dcndL, ed, gradient, sigma)
    else
       allocate(scD4)
-      call init(scD4, xtbData%dispersion, mol)
+      call init(scD4, xtbData%dispersion, mol)        ! TODO
    endif
 
    if (profile) call timer%measure(2)
@@ -544,8 +544,9 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       &     qpint(6,basis%nao,basis%nao), &
       &     source = 0.0_wp)
 
-   call getSelfEnergy(xtbData%hamiltonian, xtbData%nShell, mol%at, cn=cn, &
-      & selfEnergy=selfEnergy, dSEdcn=dSEdcn)
+   ! Assign to selfEnergy and dSEdcn
+   call getSelfEnergy(xtbData%hamiltonian, xtbData%perAtomXtbData%hamiltonian, xtbData%nShell, mol%at, cn=cn, &
+      & selfEnergy=selfEnergy, dSEdcn=dSEdcn)  ! TODO !!! avoid double counting
    ! compute integrals and prescreen to set up list arrays
    call latp%getLatticePoints(trans, sqrt(800.0_wp))
 #ifdef XTB_GPU
@@ -642,7 +643,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       &     H0,wfn%C,S,dpint,qpint,X,wfn%P,ies, &
       &     maxiter,startpdiag,scfconv,qconv, &
       &     minpr,pr, &
-      &     fail,jter)
+      &     fail,jter)        ! TODO
 
    !$acc exit data delete(s, dpint, qpint)
 
@@ -697,7 +698,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       ! since moment integrals are now computed with origin at
       ! respective atoms
       call setdvsdq(xtbData%multipole, mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, &
-         & wfn%qp, aes%gab3, aes%gab5, vs, vd, vq)
+         & wfn%qp, aes%gab3, aes%gab5, vs, vd, vq)             ! TODO
    end if
 
    dhdcn(:) = 0.0_wp
@@ -728,7 +729,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
          & dSEdcn, intcut, mol%n, basis%nao, basis%nbf, mol%at, mol%xyz, &
          & basis%caoshell, basis%saoshell, basis%nprim, basis%primcount, &
          & basis%alp, basis%cont, H, S, wfn%p, Pew, shellShift, vs, vd, vq, &
-         & dhdcn, gradient, sigma)
+         & dhdcn, gradient, sigma)           ! TODO
    else
       call build_dSDQH0(xtbData%nShell, xtbData%hamiltonian, selfEnergy, dSEdcn, &
          & intcut, mol%n, basis%nao, basis%nbf, mol%at, mol%xyz, trans, &
@@ -748,10 +749,10 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       ! since moment integrals are now computed with origin at
       ! respective atoms
       call setdvsdq(xtbData%multipole, mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, &
-         & wfn%qp, aes%gab3, aes%gab5, vs, vd, vq)
+         & wfn%qp, aes%gab3, aes%gab5, vs, vd, vq)       ! TODO
 
       ! WARNING: dcndr is overwritten on output and now dR0A/dXC
-      call dradcn(xtbData%multipole, mol%n, mol%at, cn, aes%cnShift, &
+      call dradcn(xtbData%multipole, mol%n, mol%at, cn, aes%cnShift, &        ! TODO
          & aes%cnExp, aes%cnRMax, dcndr)
       call aniso_grad(mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, wfn%qp, &
          & aes%dipDamp, aes%quadDamp, radcn, dcndr, aes%gab3, aes%gab5, gradient)
@@ -767,7 +768,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       call d4_gradient(mol, xtbData%dispersion%dispm, trans, &
          &  xtbData%dispersion%dpar, scD4%g_a, scD4%g_c, &
          &  scD4%wf, 60.0_wp, 40.0_wp, cn, dcndr, dcndL, wfn%q, &
-         &  energy=dum, gradient=gradient, sigma=sigma, e3=embd)
+         &  energy=dum, gradient=gradient, sigma=sigma, e3=embd)              ! TODO
    endif
 
    ! ------------------------------------------------------------------------
@@ -807,7 +808,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
             & xtbData%nshell,mol%xyz,xtbData%coulomb%gExp,wfn%qsh)
       else
          call pcem_grad_gfn2(xtbData%coulomb,gradient,pcem%grd,mol%n,pcem,mol%at, &
-            & xtbData%nshell,mol%xyz,wfn%qsh)
+            & xtbData%nshell,mol%xyz,wfn%qsh)         ! TODO
       end if
    end if
 

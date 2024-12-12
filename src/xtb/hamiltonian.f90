@@ -34,6 +34,7 @@ module xtb_xtb_hamiltonian
 
    interface getSelfEnergy
       module procedure :: getSelfEnergyFlat
+      module procedure :: getSelfEnergyFlatPerAtom
       module procedure :: getSelfEnergy2D
    end interface getSelfEnergy
 
@@ -44,13 +45,14 @@ module xtb_xtb_hamiltonian
 contains
 
 
+
 subroutine getSelfEnergyFlat(hData, nShell, at, cn, qat, selfEnergy, dSEdcn, dSEdq)
    type(THamiltonianData), intent(in) :: hData
    integer, intent(in) :: nShell(:)
-   integer, intent(in) :: at(:)           ! list of atomic id
-   real(wp), intent(in), optional :: cn(:)      
+   integer, intent(in) :: at(:)
+   real(wp), intent(in), optional :: cn(:)
    real(wp), intent(in), optional :: qat(:)
-   real(wp), intent(out) :: selfEnergy(:)    ! Yufan: 1 D self energy
+   real(wp), intent(out) :: selfEnergy(:)
    real(wp), intent(out), optional :: dSEdcn(:)
    real(wp), intent(out), optional :: dSEdq(:)
 
@@ -93,6 +95,60 @@ subroutine getSelfEnergyFlat(hData, nShell, at, cn, qat, selfEnergy, dSEdcn, dSE
    end if
 
 end subroutine getSelfEnergyFlat
+
+
+subroutine getSelfEnergyFlatPerAtom(hData, hDataPerAtom, nShell, at, cn, qat, selfEnergy, dSEdcn, dSEdq)
+   type(THamiltonianData), intent(in) :: hData, hDataPerAtom            ! TODO
+   integer, intent(in) :: nShell(:)
+   integer, intent(in) :: at(:)           ! list of atomic id
+   real(wp), intent(in), optional :: cn(:)      
+   real(wp), intent(in), optional :: qat(:)
+   real(wp), intent(out) :: selfEnergy(:)    ! Yufan: 1 D self energy, from hData 2d array
+   real(wp), intent(out), optional :: dSEdcn(:)
+   real(wp), intent(out), optional :: dSEdq(:)
+
+   integer :: ind, iAt, iZp, iSh
+
+   selfEnergy(:) = 0.0_wp
+   if (present(dSEdcn)) dSEdcn(:) = 0.0_wp
+   if (present(dSEdq)) dSEdq(:) = 0.0_wp
+   ind = 0        ! 
+   do iAt = 1, size(cn)
+      iZp = at(iAt)
+      do iSh = 1, nShell(iZp)
+         selfEnergy(ind+iSh) = hData%selfEnergy(iSh, iZp)   +  hDataPerAtom%selfEnergy(iSh, iAt)            ! Done
+      end do
+      ind = ind + nShell(iZp)
+   end do
+   if (present(dSEdcn) .and. present(cn)) then
+      ind = 0
+      do iAt = 1, size(cn)
+         iZp = at(iAt)
+         do iSh = 1, nShell(iZp)
+            selfEnergy(ind+iSh) = selfEnergy(ind+iSh) +  hDataPerAtom%selfEnergy(iSh, iAt)  &     ! Done
+               & - ( hData%kCN(iSh, iZp) + hDataPerAtom%kCN(iSh, iAt)) * cn(iAt)         ! Done
+            dSEdcn(ind+iSh) = - (hData%kCN(iSh, iZp) + hDataPerAtom%kCN(iSh, iAt))         ! Done
+         end do
+         ind = ind + nShell(iZp)
+      end do
+   end if
+   if (present(dSEdq) .and. present(qat)) then
+      ! raise errors
+      stop "getSelfEnergyFlatPerAtom: Not implemented yet for 2D arrays"      ! should not have this
+
+      ind = 0
+      do iAt = 1, size(cn)
+         iZp = at(iAt)
+         do iSh = 1, nShell(iZp)
+            selfEnergy(ind+iSh) = selfEnergy(ind+iSh) &        
+               & - hData%kQShell(iSh,iZp)*qat(iAt) - hData%kQAtom(iZp)*qat(iAt)**2       
+            dSEdq(ind+iSh) = -hData%kQShell(iSh,iZp) - hData%kQAtom(iZp)*2*qat(iAt)         
+         end do
+         ind = ind + nShell(iZp)
+      end do
+   end if
+
+end subroutine getSelfEnergyFlatPerAtom
 
 
 subroutine getSelfEnergy2D(hData, nShell, at, cn, qat, selfEnergy, dSEdcn, dSEdq)
@@ -458,8 +514,8 @@ subroutine build_SDQH0_perAtom(nShell, hData, hDataPerAtom, nat, at, nbf, nao, x
                il = ishtyp+1
                jl = jshtyp+1
                ! diagonals are the same for all H0 elements
-               hii = selfEnergy(ish, iat) + hDataPerAtom%selfEnergy(ish, iat)       ! Done
-               hjj = selfEnergy(jsh, jat) + hDataPerAtom%selfEnergy(jsh, jat)     ! Done
+               hii = selfEnergy(ish, iat) ! already done before
+               hjj = selfEnergy(jsh, jat) ! already done before
 
                ! we scale the two shells depending on their exponent
                zi = hData%slaterExponent(ish, izp)  + hDataPerAtom%slaterExponent(ish, iat)     ! TODO
@@ -539,7 +595,7 @@ subroutine build_SDQH0_perAtom(nShell, hData, hDataPerAtom, nat, at, nbf, nao, x
             i = iao+saoshell(ish,iat)
             ii = i*(1+i)/2
             sint(i,i) = 1.0_wp + sint(i,i)
-            H0(ii) = H0(ii) + selfEnergy(ish, iat) + hDataPerAtom%selfEnergy(ish, iat)         ! TODO
+            H0(ii) = H0(ii) + selfEnergy(ish, iat) ! already done before
          end do
 
          icao = caoshell(ish,iat)
