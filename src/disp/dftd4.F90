@@ -175,10 +175,10 @@ subroutine newD4Model(dispm,g_a,g_c,mode)
          iz = zeff(is)
          sec_al = sscale(is)*secaiw(:,is) &
             &  * zeta(g_a,gam(is)*g_c,secq(is)+iz,tmp_hq(j,ia)+iz)
-         dispm%cn(j,ia) = refcovcn(j,ia)
+         dispm%cn(j,ia) = refcovcn(j,ia)           ! TODO
          icn =nint(refcn(j,ia))
          cncount(icn) = cncount(icn) + 1
-         dispm%alpha(:,j,ia) = max(ascale(j,ia)*(alphaiw(:,j,ia)-hcount(j,ia)*sec_al),0.0_wp)
+         dispm%alpha(:,j,ia) = max(ascale(j,ia)*(alphaiw(:,j,ia)-hcount(j,ia)*sec_al),0.0_wp)         ! TODO
       enddo
       do j = 1, refn(ia)
          icn = cncount(nint(refcn(j,ia)))
@@ -189,7 +189,7 @@ subroutine newD4Model(dispm,g_a,g_c,mode)
    ! integrate C6 coefficients
    do i = 1, 118
       do j = 1, i
-         do ii = 1, dispm%nref(i)
+         do ii = 1, dispm%nref(i)         ! TODO
             do jj = 1, dispm%nref(j)
                alpha = dispm%alpha(:,ii,i)*dispm%alpha(:,jj,j)
                c6 = thopi * trapzd(alpha)

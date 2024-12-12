@@ -495,7 +495,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    ! Repulsion energy
    ep = 0.0_wp
    call latp%getLatticePoints(trans, 40.0_wp)
-   call repulsionEnGrad(mol, xtbData%repulsion, trans, 40.0_wp, &
+   call repulsionEnGrad(mol, xtbData%repulsion, xtbData%perAtomXtbData%repulsion, trans, 40.0_wp, &
       & ep, gradient, sigma)              ! TODO
 
 
@@ -508,7 +508,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
          return
       end if
       call xbpot(xtbData%halogen,mol%n,mol%at,mol%xyz,xblist,nxb,&
-         & ljexp,exb,gradient)
+         & ljexp,exb,gradient)      ! not for gfn2
    end if
 
    if (profile) call timer%measure(3)
