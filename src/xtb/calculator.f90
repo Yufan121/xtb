@@ -40,7 +40,7 @@ module xtb_xtb_calculator
    use xtb_embedding, only : read_pcem
    use xtb_metadynamic
    use xtb_constrainpot
-   use xtb_basis, only : newBasisset
+   use xtb_basis, only : newBasisset, newBasissetPerAtom
    use xtb_mctc_systools, only : rdpath
    use xtb_readparam, only : readParam, read2Param ! import xtb_readparam yufan
    use xtb_paramset, only : use_parameterset
@@ -189,7 +189,7 @@ subroutine newXTBCalculator(env, mol, calc, fname, method, accuracy)
 
    !> set up the basis set for the tb-Hamiltonian
    allocate(calc%basis)
-   call newBasisset(calc%xtbData, mol%n, mol%at, calc%basis, okbas) !!!! call basis set !!!!
+   call newBasissetPerAtom(calc%xtbData, calc%xtbData%PerAtomXtbData, mol%n, mol%at, calc%basis, okbas) !!!! call basis set !!!!    ! TODO
    if (.not.okbas) then
       call env%error('basis set could not be setup completely', source)
       return

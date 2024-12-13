@@ -25,7 +25,7 @@ module xtb_basis
    implicit none
    private
 
-   public :: newBasisset
+   public :: newBasisset, newBasissetPerAtom
 
 
 contains
@@ -307,10 +307,288 @@ subroutine newBasisset(xtbData,n,at,basis,ok)
 
 end subroutine newBasisset
 
+subroutine newBasissetPerAtom(xtbData,xtbDataPerAtom,n,at,basis,ok)
+   type(TxTBData), intent(in) :: xtbData
+   type(TxTBDataPerAtom), intent(in) :: xtbDataPerAtom
+   type(TBasisset),intent(inout) :: basis
+   integer, intent(in)  :: n
+   integer, intent(in)  :: at(n)
+   logical, intent(out) :: ok
+
+   integer  :: elem,valao
+   integer  :: i,j,m,l,iat,ati,ish,ibf,iao,ipr,p,nprim,thisprimR,idum,npq,npqR,pqn
+   real(wp) :: a(10),c(10),zeta,k1,k2,split1,pp,zqfR,zcnfR,qi,level
+   real(wp) :: aR(10),cR(10),ss
+   real(wp) :: as(10),cs(10)
+   integer :: info
+
+   call xbasis0(xtbData,n,at,basis)
+
+   basis%hdiag(1:basis%nbf)=1.d+42
+
+   ibf=0
+   iao=0
+   ipr=0
+   ish=0
+   ok=.true.
+
+   atoms: do iat=1,n          ! natom
+      ati = at(iat)
+      basis%shells(1,iat)=ish+1
+      basis%fila  (1,iat)=ibf+1
+      basis%fila2 (1,iat)=iao+1
+      shells: do m=1,xtbData%nShell(ati)     ! nshell
+         ish = ish+1
+         ! principle QN
+         npq=xtbData%hamiltonian%principalQuantumNumber(m,ati)
+         l=xtbData%hamiltonian%angShell(m,ati)
+
+         level = xtbData%hamiltonian%selfEnergy(m,ati)   + xtbDataPerAtom%hamiltonian%selfEnergy(m,iat)
+         zeta  = xtbData%hamiltonian%slaterExponent(m,ati)   + xtbDataPerAtom%hamiltonian%slaterExponent(m,iat)
+         valao = xtbData%hamiltonian%valenceShell(m,ati)  
+         if (valao /= 0) then
+            nprim = xtbData%hamiltonian%numberOfPrimitives(m,ati)
+         else
+            thisprimR = xtbData%hamiltonian%numberOfPrimitives(m,ati)
+         end if
+
+         basis%lsh(ish) = l
+         basis%ash(ish) = iat
+         basis%sh2bf(1,ish) = ibf
+         basis%sh2ao(1,ish) = iao
+         basis%caoshell(m,iat)=ibf
+         basis%saoshell(m,iat)=iao
+
+         ! add new shellwise information, for easier reference
+         basis%level(ish) = level
+         basis%zeta (ish) = zeta
+         basis%valsh(ish) = valao
+
+         ! H-He
+         if(l.eq.0.and.ati.le.2.and.valao/=0)then
+            ! s
+            call slaterToGauss(nprim, npq, l, zeta, a, c, .true., info)
+            basis%minalp(ish) = minval(a(:nprim))
+
+            ibf =ibf+1
+            basis%primcount(ibf) = ipr
+            basis%valao    (ibf) = valao
+            basis%aoat     (ibf) = iat
+            basis%lao      (ibf) = 1
+            basis%nprim    (ibf) = nprim
+            basis%hdiag    (ibf) = level
+
+            do p=1,nprim
+               ipr=ipr+1
+               basis%alp (ipr)=a(p)
+               basis%cont(ipr)=c(p)
+            enddo
+
+            iao = iao+1
+            basis%valao2(iao) = valao
+            basis%aoat2 (iao) = iat
+            basis%lao2  (iao) = 1
+            basis%hdiag2(iao) = level
+            basis%aoexp (iao) = zeta
+            basis%ao2sh (iao) = ish
+         endif
+
+         if(l.eq.0.and.ati.le.2.and.valao==0)then
+            ! diff s
+            call slaterToGauss(thisprimR, npq, l, zeta, aR, cR, .true., info)
+            call atovlp(0,nprim,thisprimR,a,aR,c,cR,ss)
+            basis%minalp(ish) = min(minval(a(:nprim)),minval(aR(:thisprimR)))
+
+            ibf =ibf+1
+            basis%primcount(ibf) = ipr
+            basis%valao    (ibf) = valao
+            basis%aoat     (ibf) = iat
+            basis%lao      (ibf) = 1
+            basis%nprim    (ibf) = thisprimR+nprim
+            basis%hdiag    (ibf) = level
+
+            idum=ipr+1
+            do p=1,thisprimR
+               ipr=ipr+1
+               basis%alp (ipr)=aR(p)
+               basis%cont(ipr)=cR(p)
+            enddo
+            do p=1,nprim
+               ipr=ipr+1
+               basis%alp (ipr)=a(p)
+               basis%cont(ipr)=-ss*c(p)
+            enddo
+            call atovlp(0,basis%nprim(ibf),basis%nprim(ibf), &
+               &        basis%alp(idum),basis%alp(idum), &
+               &        basis%cont(idum),basis%cont(idum),ss)
+            do p=1,basis%nprim(ibf)
+               basis%cont(idum-1+p)=basis%cont(idum-1+p)/sqrt(ss)
+            enddo
+
+            iao = iao+1
+            basis%valao2(iao) = valao
+            basis%aoat2 (iao) = iat
+            basis%lao2  (iao) = 1
+            basis%hdiag2(iao) = level
+            basis%aoexp (iao) = zeta
+            basis%ao2sh (iao) = ish
+         endif
+
+         ! p polarization
+         if(l.eq.1.and.ati.le.2)then
+            call slaterToGauss(nprim, npq, l, zeta, a, c, .true., info)
+            basis%minalp(ish) = minval(a(:nprim))
+            do j=2,4
+               ibf=ibf+1
+               basis%primcount(ibf) = ipr
+               basis%aoat     (ibf) = iat
+               basis%lao      (ibf) = j
+               basis%valao    (ibf) = -valao
+               basis%nprim    (ibf) = nprim
+               basis%hdiag    (ibf) = level
+
+               do p=1,nprim
+                  ipr=ipr+1
+                  basis%alp (ipr)=a(p)
+                  basis%cont(ipr)=c(p)
+               enddo
+
+               iao = iao+1
+               basis%valao2(iao) = -valao
+               basis%aoat2 (iao) = iat
+               basis%lao2  (iao) = j
+               basis%hdiag2(iao) = level
+               basis%aoexp (iao) = zeta
+               basis%ao2sh (iao) = ish
+            enddo
+         endif
+
+         ! general sp
+         if(l.eq.0.and.ati.gt.2 .and. valao/=0)then
+            ! s
+            call slaterToGauss(nprim, npq, l, zeta, as, cs, .true., info)
+            basis%minalp(ish) = minval(as(:nprim))
+
+            ibf=ibf+1
+            basis%primcount(ibf) = ipr
+            basis%valao    (ibf) = valao
+            basis%aoat     (ibf) = iat
+            basis%lao      (ibf) = 1
+            basis%nprim    (ibf) = nprim
+            basis%hdiag    (ibf) = level
+
+            do p=1,nprim
+               ipr=ipr+1
+               basis%alp (ipr)=as(p)
+               basis%cont(ipr)=cs(p)
+            enddo
+
+            iao = iao+1
+            basis%valao2(iao) = valao
+            basis%aoat2 (iao) = iat
+            basis%lao2  (iao) = 1
+            basis%hdiag2(iao) = level
+            basis%aoexp (iao) = zeta
+            basis%ao2sh (iao) = ish
+         endif
+         ! p
+         if(l.eq.1.and.ati.gt.2)then
+            call slaterToGauss(nprim, npq, l, zeta, a, c, .true., info)
+            basis%minalp(ish) = minval(a(:nprim))
+            do j=2,4
+               ibf=ibf+1
+               basis%primcount(ibf) = ipr
+               basis%valao    (ibf) = valao
+               basis%aoat     (ibf) = iat
+               basis%lao      (ibf) = j
+               basis%nprim    (ibf) = nprim
+               basis%hdiag    (ibf) = level
+
+               do p=1,nprim
+                  ipr=ipr+1
+                  basis%alp (ipr)=a(p)
+                  basis%cont(ipr)=c(p)
+               enddo
+
+               iao = iao+1
+               basis%valao2(iao) = valao
+               basis%aoat2 (iao) = iat
+               basis%lao2  (iao) = j
+               basis%hdiag2(iao) = level
+               basis%aoexp (iao) = zeta
+               basis%ao2sh (iao) = ish
+            enddo
+         endif
+
+         ! DZ s
+         if(l.eq.0 .and. ati > 2 .and. valao==0)then
+            call slaterToGauss(thisprimR, npq, l, zeta, aR, cR, .true., info)
+            call atovlp(0,nprim,thisprimR,as,aR,cs,cR,ss)
+            basis%minalp(ish) = min(minval(as(:nprim)),minval(aR(:thisprimR)))
+
+            ibf=ibf+1
+            basis%primcount(ibf) = ipr
+            basis%valao    (ibf) = valao
+            basis%aoat     (ibf) = iat
+            basis%lao      (ibf) = 1
+            basis%nprim    (ibf) = thisprimR+nprim
+            basis%hdiag    (ibf) = level
+
+            idum=ipr+1
+            do p=1,thisprimR
+               ipr=ipr+1
+               basis%alp (ipr)=aR(p)
+               basis%cont(ipr)=cR(p)
+            enddo
+            do p=1,nprim
+               ipr=ipr+1
+               basis%alp (ipr)=as(p)
+               basis%cont(ipr)=-ss*cs(p)
+            enddo
+            call atovlp(0,basis%nprim(ibf),basis%nprim(ibf), &
+               &        basis%alp(idum),basis%alp(idum), &
+               &        basis%cont(idum),basis%cont(idum),ss)
+            do p=1,basis%nprim(ibf)
+               basis%cont(idum-1+p)=basis%cont(idum-1+p)/sqrt(ss)
+            enddo
+
+            iao = iao+1
+            basis%valao2(iao) = valao
+            basis%aoat2 (iao) = iat
+            basis%lao2  (iao) = 1
+            basis%hdiag2(iao) = level
+            basis%aoexp (iao) = zeta
+            basis%ao2sh (iao) = ish
+         endif
+
+         ! d
+         if(l.eq.2)then
+            call set_d_function(basis,iat,ish,iao,ibf,ipr, &
+               &                npq,l,nprim,zeta,level,valao)
+         endif
+
+         ! f
+         if(l.eq.3)then
+            call set_f_function(basis,iat,ish,iao,ibf,ipr, &
+               &                npq,l,nprim,zeta,level,1)
+         endif
+
+         basis%sh2bf(2,ish) = ibf-basis%sh2bf(1,ish)
+         basis%sh2ao(2,ish) = iao-basis%sh2ao(1,ish)
+      enddo shells
+      basis%shells(2,iat)=ish
+      basis%fila  (2,iat)=ibf
+      basis%fila2 (2,iat)=iao
+   enddo atoms
+
+   ok = all(basis%alp(:ipr) > 0.0_wp) .and. basis%nbf == ibf .and. basis%nao == iao
+
+end subroutine newBasissetPerAtom
+
 
 ! ========================================================================
 !> determine basisset limits
-subroutine xbasis0(xtbData,n,at,basis)
+subroutine xbasis0(xtbData,n,at,basis)       ! no need
    type(TxTBData), intent(in) :: xtbData
    type(TBasisset),intent(inout) :: basis
    integer,intent(in)  :: n
@@ -327,7 +605,7 @@ subroutine xbasis0(xtbData,n,at,basis)
 
 end subroutine xbasis0
 
-subroutine dim_basis(xtbData,n,at,nshell,nao,nbf)
+subroutine dim_basis(xtbData,n,at,nshell,nao,nbf) ! No need
    type(TxTBData), intent(in) :: xtbData
    integer,intent(in)  :: n
    integer,intent(in)  :: at(n)

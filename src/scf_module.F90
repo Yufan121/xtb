@@ -419,7 +419,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
             exit
          end if
       end do
-      idnum(ii) = mol%at(jat)
+      idnum(ii) = mol%at(jat)    ! map: atomic type (1,2,...) to atomic number (1 - 118)
    end do
 
    if(xtbData%level == 1)then
@@ -427,6 +427,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    else !GFN2
       gav = gamAverage%arithmetic
    endif
+   ! call initFromMoleculePerAtom then initKlopmanOhnoPerAtom
    call init(coulomb, env, mol, gav, xtbData%coulomb%shellHardness, xtbData%perAtomXtbData%coulomb%shellHardness, &
       & xtbData%coulomb%gExp, num=idnum, nshell=xtbData%nShell)         ! TODO
 
@@ -436,7 +437,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       return
    end if
 
-   call coulomb%getCoulombMatrix(mol, ies%jmat)
+   call coulomb%getCoulombMatrixPerAtom(mol, ies%jmat)
 
 !  J potentials including the point charge stuff
    allocate(Vpc(basis%nshell))
@@ -798,7 +799,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    allocate(djdr(3, mol%n, basis%nshell))
    allocate(djdtr(3, basis%nshell))
    allocate(djdL(3, 3, basis%nshell))
-   call coulomb%getCoulombDerivs(mol, wfn%qsh, djdr, djdtr, djdL)
+   call coulomb%getCoulombDerivsPerAtom(mol, wfn%qsh, djdr, djdtr, djdL)
    call mctc_gemv(djdr, wfn%qsh, gradient, beta=1.0_wp)
    !call mctc_gemv(djdL, wfn%qsh, sigma, beta=1.0_wp)
 
@@ -810,7 +811,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
             & xtbData%nshell,mol%xyz,xtbData%coulomb%gExp,wfn%qsh)
       else
          call pcem_grad_gfn2(xtbData%coulomb,gradient,pcem%grd,mol%n,pcem,mol%at, &
-            & xtbData%nshell,mol%xyz,wfn%qsh)         ! TODO
+            & xtbData%nshell,mol%xyz,wfn%qsh)         ! TODO, not accessed
       end if
    end if
 
