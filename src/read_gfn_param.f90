@@ -381,7 +381,7 @@ subroutine read2Param &
       allocate(principalQuantumNumberPerAtom(3, mol%n))
 
 
-      ! loop structure, load file prarm to xtb_xtb_gfn2 (overwrite original file)
+      !!! loop structure, load file prarm to xtb_xtb_gfn2_perAtom (overwrite original file)
       if (debug) print'(">",a)',line
       readgroupsperatom: do
          if (index(line,flag).eq.1) then 
@@ -413,6 +413,10 @@ subroutine read2Param &
       end if
       !!! EndYufan loop structure
 
+      ! Verify that nAtom and ElemIdPerAtom match
+      call checkElemIdPerAtomMatch(env, ElemIdPerAtom, mol)
+
+      !!! Assign some values from xtb_xtb_gfn2_perAtom to perAtomXtbData
       xtbData%perAtomXtbData%nShell = nShellPerAtom ! 1-dim array
       
       xtbData%perAtomXtbData%hamiltonian%electronegativity = electronegativityPerAtom(:)
@@ -437,7 +441,7 @@ subroutine read2Param &
       xtbData%perAtomXtbData%coulomb%chemicalHardness = atomicHardnessPerAtom(:mol%n)  ! Yufan: element parameter, atomicHardness
 
 
-      ! TODO, shell hardness tweak
+      ! Done, shell hardness tweak
       deallocate(xtbData%perAtomXtbData%coulomb%shellHardness)
       allocate(xtbData%perAtomXtbData%coulomb%shellHardness(mShell, mol%n))
       call setGFN1ShellHardnessPerAtom(xtbData%perAtomXtbData%coulomb%shellHardness, nShellPerAtom, angShellPerAtom, & ! Yufan: element parameter, shellHardness
@@ -1081,6 +1085,31 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the atomic id
    case('ele_id');  if (getValue(env,val,idum)) ElemIdPerAtom(iz) = idum 
    end select
 end subroutine gfn_elempar_per_atom
+
+subroutine checkElemIdPerAtomMatch(env, ElemIdPerAtom, mol)
+  implicit none
+   type(TEnvironment), intent(inout) :: env
+  integer, intent(in) :: ElemIdPerAtom(:)
+  type(TMolecule), intent(in) :: mol
+  integer :: i
+
+  ! Check if the lengths match
+  if (size(ElemIdPerAtom) /= size(mol%at)) then
+    call env%error('Error: Length of ElemIdPerAtom does not match length of mol%at')
+    return
+  end if
+
+  ! Check if each element matches
+  do i = 1, size(ElemIdPerAtom)
+    if (ElemIdPerAtom(i) /= mol%at(i)) then
+      call env%error("Error: Element mismatch at index ?")
+      return
+    end if
+  end do
+
+  print *, 'Success: ElemIdPerAtom matches mol%at'
+end subroutine checkElemIdPerAtomMatch
+
 
 end subroutine read2Param
 
