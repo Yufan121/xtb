@@ -435,10 +435,14 @@ subroutine read2Param &
          & repAlphaPerAtom, repZeffPerAtom, electronegativityPerAtom)    
       
       xtbData%perAtomXtbData%coulomb%chemicalHardness = atomicHardnessPerAtom(:mol%n)  ! Yufan: element parameter, atomicHardness
+
+
+      ! TODO, shell hardness tweak
       deallocate(xtbData%perAtomXtbData%coulomb%shellHardness)
       allocate(xtbData%perAtomXtbData%coulomb%shellHardness(mShell, mol%n))
       call setGFN1ShellHardnessPerAtom(xtbData%perAtomXtbData%coulomb%shellHardness, nShellPerAtom, angShellPerAtom, & ! Yufan: element parameter, shellHardness
-         & atomicHardnessPerAtom, shellHardnessPerAtom)
+         & atomicHardnessPerAtom, atomicHardness, shellHardnessPerAtom, shellHardness, ElemIdPerAtom)
+      
       xtbData%perAtomXtbData%coulomb%thirdOrderAtom = thirdOrderAtomPerAtom(:mol%n)  ! Yufan: element parameter
       ! xtbData%coulomb%electronegativity = eeqEN(:max_elem) ! neglect, no data for gfn2
       ! xtbData%coulomb%kCN = eeqkCN(:max_elem)      ! neglect, no data for gfn2

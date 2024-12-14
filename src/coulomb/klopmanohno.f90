@@ -261,7 +261,8 @@ subroutine initKlopmanOhnoPerAtom(self, env, id, lattice, boundaryCond, gav, har
    if (present(num)) then
       allocate(self%hardness(size(hardness, dim=1), size(molat)))
       do ii = 1, size(molat) ! natom
-         self%hardness(:, ii) = hardness(:, molat(ii)) + hardnessPerAtom(:, ii)       ! Done
+         ! self%hardness(:, ii) = hardness(:, molat(ii)) + hardnessPerAtom(:, ii)       ! Done
+         self%hardness(:, ii) = hardnessPerAtom(:, ii)       ! Done
       end do
    else
       stop 'Not implemented' 

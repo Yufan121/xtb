@@ -129,8 +129,8 @@ module xtb_xtb_gfn2_per_atom
 
   contains
 
-  subroutine setGFN1ShellHardnessPerAtom(shellHardness, nShell, angShell, atomicHardness, &
-      & angHardness)
+  subroutine setGFN1ShellHardnessPerAtom(shellHardness, nShell, angShell, atomicHardness, atomicHardnessPerElem, &
+      & angHardness, angHardnessPerElem, ElemIdPerAtom)
 
   ! Yyufan: modification 1. change index end to eElem 
 
@@ -141,20 +141,22 @@ module xtb_xtb_gfn2_per_atom
 
    integer, intent(in) :: angShell(:, :)
 
-   real(wp), intent(in) :: atomicHardness(:)
+   real(wp), intent(in) :: atomicHardness(:), atomicHardnessPerElem(:) ! access by elem_id
 
-   real(wp), intent(in) :: angHardness(0:, :)
+   real(wp), intent(in) :: angHardness(0:, :), angHardnessPerElem(0:, :) ! access by elem_id
 
-   integer :: nElem, iZp, iSh, lAng
+   integer, intent(in) :: ElemIdPerAtom(:)
 
-   nElem = min(size(shellHardness, dim=2), size(nShell), size(angShell, dim=2))
+   integer :: nAtom, iAt, iSh, lAng
+
+   nAtom = min(size(shellHardness, dim=2), size(nShell), size(angShell, dim=2))
 
    shellHardness(:, :) = 0.0_wp
-   do iZp = 1, nElem
-      do iSh = 1, nShell(iZp)
-         lAng = angShell(iSh, iZp)
-         shellHardness(iSh, iZp) = atomicHardness(iZp) * &
-            (1.0_wp + angHardness(lAng, iZp))
+   do iAt = 1, nAtom    ! natom
+      do iSh = 1, nShell(iAt)   ! nShell
+         lAng = angShell(iSh, iAt)    
+         shellHardness(iSh, iAt) = (atomicHardness(iAt) + atomicHardnessPerElem(ElemIdPerAtom(iAt))) * &
+            (1.0_wp + angHardness(lAng, iAt) + angHardnessPerElem(lAng, ElemIdPerAtom(iAt)))
       end do
    end do
 
