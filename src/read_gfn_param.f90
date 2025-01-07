@@ -393,7 +393,7 @@ subroutine read2Param &
             ! case('pairpar')
             !    call read_pairpar
             case default
-               if (index(line,'Z').eq.2) then
+               if (index(line,'Z').eq.2) then ! eq.2 means the second character is 'Z'
                   call read_elempar_per_atom !!!! read_elempar is called here !!!!!
                else
                   call getline(iunitPerAtom,line,err)
@@ -976,7 +976,7 @@ subroutine read_elempar_per_atom
    implicit none
    character(len=:), allocatable :: key, val  
    integer :: iz, ie
-   if (getValue(env,line(4:5),iz)) then
+   if (getValue(env,line(4:5),iz)) then      ! 
       timestp(iz) = line(7:len_trim(line))
       do
          call getline(iunitPerAtom,line,err)
@@ -990,6 +990,8 @@ subroutine read_elempar_per_atom
 
          key = lowercase(trim(line(:ie-1)))
          val = trim(adjustl(line(ie+1:)))
+
+         ! call env%warning("Displaying key '"//key//"' for '"//val//"Z'")   ! check if key and val are correct
 
          call gfn_elempar_per_atom(key,val,iz) ! call gfn_elempar to get each parameter
 
@@ -1103,7 +1105,7 @@ subroutine checkElemIdPerAtomMatch(env, ElemIdPerAtom, mol)
   do i = 1, size(ElemIdPerAtom)
     if (ElemIdPerAtom(i) /= mol%at(i)) then
       call env%error("Error: Element mismatch at index ?")
-      return
+      stop "Error: Element mismatch at index ?"
     end if
   end do
 

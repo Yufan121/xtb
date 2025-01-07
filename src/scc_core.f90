@@ -670,7 +670,7 @@ subroutine h0scal_PerAtom(hData,hDataPerAtom,iat,jat,il,jl,izp,jzp,valaoi,valaoj
 !  valence
    if(valaoi.and.valaoj) then
       ! den=(hData%electronegativity(izp)-hData%electronegativity(jzp))**2      ! Done
-      den=(hData%electronegativity(izp)+hDataPerAtom%electronegativity(iat)-hData%electronegativity(jzp)+hDataPerAtom%electronegativity(jat))**2 
+      den=(hData%electronegativity(izp)+hDataPerAtom%electronegativity(iat)-(hData%electronegativity(jzp)+hDataPerAtom%electronegativity(jat)))**2 
 
       enpoly = (1.0_wp+hData%enScale(jl-1,il-1)*den*(1.0_wp+hData%enScale4*den))
       km=hData%kScale(jl-1,il-1)*enpoly*hData%pairParam(izp,jzp)
