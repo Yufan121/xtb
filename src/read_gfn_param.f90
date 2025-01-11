@@ -976,8 +976,8 @@ subroutine read_elempar_per_atom
    implicit none
    character(len=:), allocatable :: key, val  
    integer :: iz, ie
-   if (getValue(env,line(4:5),iz)) then      ! 
-      timestp(iz) = line(7:len_trim(line))
+   if (getValue(env,line(4:6),iz)) then      ! Yufan: Changed, to allow for more than 99 atoms
+      ! timestp(iz) = line(7:len_trim(line))
       do
          call getline(iunitPerAtom,line,err)
          if (debug) print'("->",a)',line

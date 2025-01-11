@@ -765,8 +765,10 @@ subroutine initMultipolePerAtom(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp,
    self%quadDamp = quadDamp
    self%dipKernel = dipKernel(:maxElem)
    self%quadKernel = quadKernel(:maxElem)
-   self%valenceCN = valenceCN(:maxElem) ! Will this be right?
-   self%multiRad = multiRad(:maxElem)
+   allocate(self%valenceCN(maxElem))
+   allocate(self%multiRad(maxElem))
+   ! self%valenceCN = valenceCN(:maxElem) ! Will this be right?
+   ! self%multiRad = multiRad(:maxElem)
 
    do i = 1, maxElem
       atomId = ElemIdPerAtom(i)
