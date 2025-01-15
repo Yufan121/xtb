@@ -363,6 +363,12 @@ subroutine read2Param &
       allocate(electronegativityPerAtom(mol%n))
       ! Allocate atomicHardnessPerAtom
       allocate(atomicHardnessPerAtom(mol%n))
+
+      ! allocate valance CN
+      allocate(valanceCNPerAtom(mol%n))
+      ! Allocate Cutoff radii for multipole electrostatics 
+      allocate(multiRadPerAtom(mol%n))
+
       ! Allocate shellPoly with shape (4, mol%n)
       allocate(shellPolyPerAtom(4, mol%n))
       ! Allocate selfEnergy with shape (3, mol%n)
@@ -471,7 +477,7 @@ subroutine read2Param &
       ! allocate(xtbData%perAtomXtbData%multipole)  
       call init(xtbData%perAtomXtbData%multipole, globpar%aesshift, globpar%aesexp, &
          & globpar%aesrmax, globpar%aesdmp3, globpar%aesdmp5, &
-         & dipKernelPerAtom, quadKernelPerAtom, ElemIdPerAtom)
+         & dipKernelPerAtom, quadKernelPerAtom, ElemIdPerAtom, valanceCNPerAtom, multiRadPerAtom)
 
       ! Hamiltonian
       xtbData%perAtomXtbData%hamiltonian%wExp = 0.5_wp
@@ -1085,6 +1091,8 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the atomic id
    ! case('kqp');   if (getValue(env,val,ddum)) kqat(1,iz)  = ddum  ! not in gfn2
    ! case('kqd');   if (getValue(env,val,ddum)) kqat(2,iz)  = ddum  ! not in gfn2
    case('ele_id');  if (getValue(env,val,idum)) ElemIdPerAtom(iz) = idum 
+   case('mpvcn'); if (getValue(env,val,ddum)) valanceCNPerAtom(iz) = ddum
+   case('mprad'); if (getValue(env,val,ddum)) multiRadPerAtom(iz) = ddum
    end select
 end subroutine gfn_elempar_per_atom
 

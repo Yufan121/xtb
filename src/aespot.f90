@@ -1366,9 +1366,9 @@ subroutine get_radcn_PerAtom(aesData,aesDataPerAtom,n,at,cn,shift,expo,rmax,radc
    real(wp), intent (out) :: radcn(:)
    real(wp) rco,t1,t2
    integer i,j
-   do i = 1,n
-      rco = aesData%multiRad(at(i))             ! base radius of element
-      t1 =cn(i)-aesData%valenceCN(at(i))-shift  ! CN - VALCN - SHIFT
+   do i = 1,n  ! natom
+      rco = aesData%multiRad(at(i)) + aesDataPerAtom%multiRad(i)            ! base radius of element
+      t1 =cn(i)-(aesData%valenceCN(at(i)) + aesDataPerAtom%valenceCN(i))-shift  ! CN - VALCN - SHIFT
       t2 =rco +(rmax-rco)/(1.0_wp+exp(-expo*t1))
       radcn(i) = t2
    enddo
@@ -1400,6 +1400,23 @@ subroutine dradcn(aesData,n,at,cn,shift,expo,rmax,dcn)
       dcn(:,:,i) = dcn(:,:,i)*t2
    end do
 end subroutine dradcn
+
+subroutine dradcnPerAtom(aesData,aesDataPerAtom,n,at,cn,shift,expo,rmax,dcn)
+   implicit none
+   class(TMultipoleData), intent(in) :: aesData,aesDataPerAtom
+   integer, intent (in) :: n,at(:)
+   real(wp), intent (in)  :: cn(:),shift,expo,rmax
+   real(wp), intent (inout) :: dcn(:,:,:)
+   real(wp) rco,t1,t2,t3,t4,tmp1,tmp2
+   integer i,j,k
+   do i = 1,n
+      rco = aesData%multiRad(at(i)) + aesDataPerAtom%multiRad(i)          ! base radius of element
+      t1 =exp(-expo*(cn(i)-(aesData%valenceCN(at(i))+aesDataPerAtom%valenceCN(i))-shift))  ! CN - VALCN - SHIFT
+      t2 =(rmax-rco)/(1.0_wp+2.0_wp*t1+t1*t1)
+      t2 = t2*expo*t1
+      dcn(:,:,i) = dcn(:,:,i)*t2
+   end do
+end subroutine dradcnPerAtom
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !     zero-damping function and derivative

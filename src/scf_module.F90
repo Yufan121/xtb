@@ -87,7 +87,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
    &                     mdisp,prmolc6,edisp_scc,d4_gradient
    use xtb_disp_ncoord,    only : dncoord_gfn,ncoord_d4,dncoord_d3
    use xtb_embedding, only : read_pcem,jpot_pcem_gfn1,jpot_pcem_gfn2
-   use xtb_aespot,    only : dradcn,aniso_grad,setdvsdq,setdvsdqPerAtom
+   use xtb_aespot,    only : dradcn,dradcnPerAtom,aniso_grad,setdvsdq,setdvsdqPerAtom
    use xtb_disp_ncoord,    only : dncoord_gfn,dncoord_d3
    use xtb_embedding, only : pcem_grad_gfn1,pcem_grad_gfn2
    use xtb_solv_cosmo, only : TCosmo
@@ -751,11 +751,11 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       ! VS, VD, VQ-dependent potentials are changed w.r.t. SCF,
       ! since moment integrals are now computed with origin at
       ! respective atoms
-      call setdvsdq(xtbData%multipole, mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, &
+      call setdvsdqPerAtom(xtbData%multipole, xtbData%perAtomXtbData%multipole, mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, &
          & wfn%qp, aes%gab3, aes%gab5, vs, vd, vq)       ! TODO
 
       ! WARNING: dcndr is overwritten on output and now dR0A/dXC
-      call dradcn(xtbData%multipole, mol%n, mol%at, cn, aes%cnShift, &        ! TODO
+      call dradcnPerAtom(xtbData%multipole, xtbData%perAtomXtbData%multipole, mol%n, mol%at, cn, aes%cnShift, &        ! TODO
          & aes%cnExp, aes%cnRMax, dcndr)
       call aniso_grad(mol%n, mol%at, mol%xyz, wfn%q, wfn%dipm, wfn%qp, &
          & aes%dipDamp, aes%quadDamp, radcn, dcndr, aes%gab3, aes%gab5, gradient)

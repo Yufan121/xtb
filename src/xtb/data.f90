@@ -723,7 +723,7 @@ subroutine initMultipole(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp, &
 end subroutine initMultipole
 
 subroutine initMultipolePerAtom(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp, &
-      & dipKernel, quadKernel, ElemIdPerAtom) ! Yufan: called from read2pararm
+      & dipKernel, quadKernel, ElemIdPerAtom, valanceCNPerAtom, multiRadPerAtom) ! Yufan: called from read2pararm
 
   ! Yyufan: modification 1. add a mapping from atom id to kind
 
@@ -754,6 +754,10 @@ subroutine initMultipolePerAtom(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp,
    !>
    real(wp), intent(in) :: quadKernel(:)
 
+   real(wp), intent(in) :: valanceCNPerAtom(:)
+   real(wp), intent(in) :: multiRadPerAtom(:)
+
+
    integer :: maxElem, atomId, i
 
    maxElem = min(size(dipKernel), size(quadKernel))
@@ -770,11 +774,17 @@ subroutine initMultipolePerAtom(self, cnShift, cnExp, cnRMax, dipDamp, quadDamp,
    ! self%valenceCN = valenceCN(:maxElem) ! Will this be right?
    ! self%multiRad = multiRad(:maxElem)
 
-   do i = 1, maxElem
-      atomId = ElemIdPerAtom(i)
-      self%valenceCN(i) = valenceCN(atomId)
-      self%multiRad(i) = multiRad(atomId)
-   end do
+   
+   ! ! Old: fixed valenceCN
+   ! do i = 1, maxElem
+   !    atomId = ElemIdPerAtom(i)
+   !    self%valenceCN(i) = valenceCN(atomId)
+   !    self%multiRad(i) = multiRad(atomId)
+   ! end do
+
+   ! New: predictable valenceCN
+   self%valenceCN = valanceCNPerAtom
+   self%multiRad = multiRadPerAtom
 
 end subroutine initMultipolePerAtom
 

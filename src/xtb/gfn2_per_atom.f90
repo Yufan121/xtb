@@ -95,6 +95,13 @@ module xtb_xtb_gfn2_per_atom
   ! electronegativityPerAtom
   real(wp), allocatable :: electronegativityPerAtom(:)
 
+  ! valanceCNPerAtom
+  real(wp), allocatable :: valanceCNPerAtom(:)
+
+  ! multiRadPerAtom
+  real(wp), allocatable :: multiRadPerAtom(:)
+
+
   ! atomicHardnessPerAtom
   real(wp), allocatable :: atomicHardnessPerAtom(:)
 
@@ -121,9 +128,6 @@ module xtb_xtb_gfn2_per_atom
 
   ! Principal quantum number of each shell, (3, natom)
   integer, allocatable :: principalQuantumNumberPerAtom(:, :)
-
-
-
 
 
 
