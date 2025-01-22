@@ -155,6 +155,29 @@ subroutine read2Param &
       call env%error("Old format parameter file is not supported anymore")
    end if
 
+
+   !!! loop structure, load file prarm to xtb_xtb_gfn2_perAtom (overwrite original file)
+   if (debug) print'(">",a)',line
+   readgroupsglobparamperatom: do
+      if (index(line,flag).eq.1) then 
+         select case(line(2:))
+         case('globpar')
+            call read_globpar_per_atom
+         case default
+            if (index(line,'$end').gt.0) exit readgroupsglobparamperatom
+            call getline(iunitPerAtom,line,err)
+            if (debug) print'(">",a)',line
+         end select
+      else
+         call getline(iunitPerAtom,line,err)
+         if (debug) print'(">",a)',line
+      endif
+      ! if (err.ne.0) exit readgroupsglobparamperatom
+   enddo readgroupsglobparamperatom
+
+
+
+
    call setpair(level, kpair) 
 
 
@@ -390,12 +413,12 @@ subroutine read2Param &
       !!! loop structure, load file prarm to xtb_xtb_gfn2_perAtom (overwrite original file)
       if (debug) print'(">",a)',line
       readgroupsperatom: do
-         if (index(line,flag).eq.1) then 
+         if (index(line,flag).eq.1) then ! if line starts with $
             select case(line(2:))
             case('info')
                call read_info_per_atom
             ! case('globpar')
-            !    call read_globpar
+            !    call read_globpar_per_atom
             ! case('pairpar')
             !    call read_pairpar
             case default
@@ -841,6 +864,107 @@ subroutine gfn_globpar(key,val,globpar) ! Yufan : this is only for converting to
    case('aesrmax'); if (getValue(env,val,ddum)) globpar%aesrmax = ddum
    end select
 end subroutine gfn_globpar
+
+subroutine read_globpar_per_atom    ! name not accurate, only the offset for globpar, not for per atoms 
+   implicit none
+   character(len=:), allocatable :: key, val
+   integer :: ie
+   do
+      call getline(iunitPerAtom,line,err)    ! Done
+      if (debug) print'("->",a)',line
+      if (err.ne.0) exit
+      if (index(line,flag).gt.0) exit
+
+      ie = index(line,space)
+      if (line.eq.'') cycle ! skip empty lines
+      if (ie.eq.0) cycle
+
+      key = trim(line(:ie-1))
+      val = trim(adjustl(line(ie+1:))) ! Yufan: already got data in str format
+
+      call gfn_globpar_per_atom(key,val,globpar)
+
+   enddo
+end subroutine read_globpar_per_atom
+
+
+subroutine gfn_globpar_per_atom(key,val,globpar) ! Yufan : this is only for converting to real and set to globpar 
+   use xtb_readin, only : getValue     ! So in this file, just offset each global param
+   implicit none
+   character(len=*), intent(in) :: key, val
+   type(TxTBParameter), intent(inout) :: globpar
+   real(wp) :: ddum
+   select case(key)
+   case default
+      call env%warning("Unknown key '"//key//"' for '"//flag//"globpar'")
+   case('kexp'); if (getValue(env,val,ddum)) kExp = kExp + ddum
+   case('kexplight'); if (getValue(env,val,ddum)) kExpLight = kExpLight + ddum
+   case('ks'); if (getValue(env,val,ddum)) globpar%kshell(0) = globpar%kshell(0) + ddum 
+   case('kp'); if (getValue(env,val,ddum)) globpar%kshell(1) = globpar%kshell(1) + ddum
+   case('kd'); if (getValue(env,val,ddum)) globpar%kshell(2) = globpar%kshell(2) + ddum
+   case('kf'); if (getValue(env,val,ddum)) globpar%kshell(3) = globpar%kshell(3) + ddum
+   case('ksp'); if (getValue(env,val,ddum)) globpar%ksp = globpar%ksp + ddum
+   case('ksd'); if (getValue(env,val,ddum)) globpar%ksd = globpar%ksd + ddum
+   case('kpd'); if (getValue(env,val,ddum)) globpar%kpd = globpar%kpd + ddum
+   case('kdiff'); if (getValue(env,val,ddum)) globpar%kdiff = globpar%kdiff + ddum
+   case('kdiffa'); if (getValue(env,val,ddum)) globpar%kdiffa = globpar%kdiffa + ddum
+   case('kdiffb'); if (getValue(env,val,ddum)) globpar%kdiffb = globpar%kdiffb + ddum
+   case('ens'); if (getValue(env,val,ddum)) globpar%enshell(0) = globpar%enshell(0) + ddum
+   case('enp'); if (getValue(env,val,ddum)) globpar%enshell(1) = globpar%enshell(1) + ddum
+   case('end'); if (getValue(env,val,ddum)) globpar%enshell(2) = globpar%enshell(2) + ddum
+   case('enf'); if (getValue(env,val,ddum)) globpar%enshell(3) = globpar%enshell(3) + ddum
+   case('enscale'); if (getValue(env,val,ddum)) globpar%enshell = globpar%enshell + ddum
+   case('enscale4'); if (getValue(env,val,ddum)) globpar%enscale4 = globpar%enscale4 + ddum
+   case('renscale'); if (getValue(env,val,ddum)) globpar%renscale = globpar%renscale + ddum
+   case('cns'); if (getValue(env,val,ddum)) globpar%cnshell(:, 0) = globpar%cnshell(:, 0) + ddum
+   case('cnp'); if (getValue(env,val,ddum)) globpar%cnshell(:, 1) = globpar%cnshell(:, 1) + ddum
+   case('cnd'); if (getValue(env,val,ddum)) globpar%cnshell(:, 2) = globpar%cnshell(:, 2) + ddum
+   case('cnf'); if (getValue(env,val,ddum)) globpar%cnshell(:, 3) = globpar%cnshell(:, 3) + ddum
+   case('cnd1'); if (getValue(env,val,ddum)) globpar%cnshell(1, 2) = globpar%cnshell(1, 2) + ddum
+   case('cnd2'); if (getValue(env,val,ddum)) globpar%cnshell(2, 2) = globpar%cnshell(2, 2) + ddum
+   case('gam3s'); if (getValue(env,val,ddum)) globpar%gam3shell(:, 0) = globpar%gam3shell(:, 0) + ddum
+   case('gam3p'); if (getValue(env,val,ddum)) globpar%gam3shell(:, 1) = globpar%gam3shell(:, 1) + ddum
+   case('gam3d'); if (getValue(env,val,ddum)) globpar%gam3shell(:, 2) = globpar%gam3shell(:, 2) + ddum
+   case('gam3f'); if (getValue(env,val,ddum)) globpar%gam3shell(:, 3) = globpar%gam3shell(:, 3) + ddum
+   case('gam3d1'); if (getValue(env,val,ddum)) globpar%gam3shell(1, 2) = globpar%gam3shell(1, 2) + ddum
+   case('gam3d2'); if (getValue(env,val,ddum)) globpar%gam3shell(2, 2) = globpar%gam3shell(2, 2) + ddum
+   case('srbshift'); if (getValue(env,val,ddum)) globpar%srbshift = globpar%srbshift + ddum
+   case('srbpre'); if (getValue(env,val,ddum)) globpar%srbpre = globpar%srbpre + ddum
+   case('srbexp'); if (getValue(env,val,ddum)) globpar%srbexp = globpar%srbexp + ddum
+   case('srbken'); if (getValue(env,val,ddum)) globpar%srbken = globpar%srbken + ddum
+   case('wllscal'); if (getValue(env,val,ddum)) globpar%wllscal = globpar%wllscal + ddum
+   case('ipeashift'); if (getValue(env,val,ddum)) globpar%ipeashift = globpar%ipeashift + ddum
+   case('gscal'); if (getValue(env,val,ddum)) globpar%gscal = globpar%gscal + ddum
+   case('zcnf'); if (getValue(env,val,ddum)) globpar%zcnf = globpar%zcnf + ddum
+   case('tscal'); if (getValue(env,val,ddum)) globpar%tscal = globpar%tscal + ddum
+   case('kcn'); if (getValue(env,val,ddum)) globpar%kcn = globpar%kcn + ddum
+   case('fpol'); if (getValue(env,val,ddum)) globpar%fpol = globpar%fpol + ddum
+   case('ken'); if (getValue(env,val,ddum)) globpar%ken = globpar%ken + ddum
+   case('lshift'); if (getValue(env,val,ddum)) globpar%lshift = globpar%lshift + ddum
+   case('lshifta'); if (getValue(env,val,ddum)) globpar%lshifta = globpar%lshifta + ddum
+   case('split'); if (getValue(env,val,ddum)) globpar%split = globpar%split + ddum
+   case('zqf'); if (getValue(env,val,ddum)) globpar%zqf = globpar%zqf + ddum
+   case('alphaj'); if (getValue(env,val,ddum)) globpar%alphaj = globpar%alphaj + ddum
+   case('kexpo'); if (getValue(env,val,ddum)) globpar%kexpo = globpar%kexpo + ddum
+   case('dispa'); if (getValue(env,val,ddum)) globpar%dispa = globpar%dispa + ddum
+   case('dispb'); if (getValue(env,val,ddum)) globpar%dispb = globpar%dispb + ddum
+   case('dispc'); if (getValue(env,val,ddum)) globpar%dispc = globpar%dispc + ddum
+   case('dispatm'); if (getValue(env,val,ddum)) globpar%dispatm = globpar%dispatm + ddum
+   case('a1'); if (getValue(env,val,ddum)) disp%a1 = disp%a1 + ddum
+   case('a2'); if (getValue(env,val,ddum)) disp%a2 = disp%a2 + ddum
+   case('s6'); if (getValue(env,val,ddum)) disp%s6 = disp%s6 + ddum
+   case('s8'); if (getValue(env,val,ddum)) disp%s8 = disp%s8 + ddum
+   case('s9'); if (getValue(env,val,ddum)) disp%s9 = disp%s9 + ddum
+   case('xbdamp'); if (getValue(env,val,ddum)) globpar%xbdamp = globpar%xbdamp + ddum
+   case('xbrad'); if (getValue(env,val,ddum)) globpar%xbrad = globpar%xbrad + ddum
+   case('aesdmp3'); if (getValue(env,val,ddum)) globpar%aesdmp3 = globpar%aesdmp3 + ddum
+   case('aesdmp5'); if (getValue(env,val,ddum)) globpar%aesdmp5 = globpar%aesdmp5 + ddum
+   case('aesshift'); if (getValue(env,val,ddum)) globpar%aesshift = globpar%aesshift + ddum
+   case('aesexp'); if (getValue(env,val,ddum)) globpar%aesexp = globpar%aesexp + ddum
+   case('aesrmax'); if (getValue(env,val,ddum)) globpar%aesrmax = globpar%aesrmax + ddum
+   end select
+end subroutine gfn_globpar_per_atom
+
 
 subroutine read_pairpar
    use xtb_mctc_strings
