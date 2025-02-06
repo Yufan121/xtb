@@ -142,7 +142,7 @@ subroutine read2Param &
                call getline(iunit,line,err)
                if (debug) print'(">",a)',line
             endif
-         end select
+         end select 
       else
          call getline(iunit,line,err)
          if (debug) print'(">",a)',line
