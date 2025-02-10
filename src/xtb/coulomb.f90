@@ -104,7 +104,7 @@ subroutine initCoulombPerAtom(self, input, inputPerAtom, nshell, num)
 
    call init(self%thirdOrder, input, inputPerAtom, nshell, num)
 
-   nsh = sum(nshell(num))
+   nsh = sum(nshell(num)) ! total number of shells
    allocate(self%jmat(nsh, nsh))
    allocate(self%shift(nsh))
 
@@ -134,9 +134,9 @@ subroutine addShift(self, qat, qsh, atomicShift, shellShift)
 
    nsh = size(shellShift)
 
-   call self%thirdOrder%addShift(qat, qsh, atomicShift, shellShift)
+   call self%thirdOrder%addShift(qat, qsh, atomicShift, shellShift) ! all the same after this line
 
-   call blas_symv('l', nsh, 1.0_wp, self%jmat, nsh, qsh, 1, 1.0_wp, shellShift, 1)
+   call blas_symv('l', nsh, 1.0_wp, self%jmat, nsh, qsh, 1, 1.0_wp, shellShift, 1)  ! this is the problem, check self%jmat
 
 end subroutine addShift
 

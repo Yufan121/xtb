@@ -351,7 +351,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
    integer, intent(inout) :: ihomob
 !! ------------------------------------------------------------------------
    real(wp),intent(in)    :: H0(ndim*(ndim+1)/2)
-   real(wp),intent(out)   :: H(ndim,ndim)
+   real(wp),intent(out)   :: H(ndim,ndim) 
    real(wp),intent(inout) :: P(ndim,ndim)
    real(wp),intent(inout) :: X(ndim,ndim)
    real(wp),intent(in)    :: S(ndim,ndim)
@@ -461,7 +461,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
          ihomob=0
       endif
       if (ihomoa+1.le.ndim) then
-         call fermismear(.false.,ndim,ihomoa,et,emo,focca,nfoda,efa,ga)
+         call fermismear(.false.,ndim,ihomoa,et,emo,focca,nfoda,efa,ga) ! emo is eig, and H is different
       endif
       if (ihomob+1.le.ndim) then
          call fermismear(.false.,ndim,ihomob,et,emo,foccb,nfodb,efb,gb)

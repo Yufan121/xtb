@@ -369,43 +369,43 @@ subroutine read2Param &
 
       !!! Allocate xtb_gfn2_per_atom 
       ! Allocate thirdOrderAtom with size mol%n
-      allocate(thirdOrderAtomPerAtom(mol%n))
+      allocate(thirdOrderAtomPerAtom(mol%n), source=0.0_wp)
       ! Allocate repAlpha with size mol%n
-      allocate(repAlphaPerAtom(mol%n))
+      allocate(repAlphaPerAtom(mol%n), source=0.0_wp)
       ! Allocate dipKernel with size mol%n
-      allocate(dipKernelPerAtom(mol%n))
+      allocate(dipKernelPerAtom(mol%n), source=0.0_wp)
       ! Allocate quadKernel with size mol%n
-      allocate(quadKernelPerAtom(mol%n)) 
+      allocate(quadKernelPerAtom(mol%n), source=0.0_wp) 
       ! Allocate Effective nuclear charge with size mol%n
-      allocate(repZeffPerAtom(mol%n)) 
+      allocate(repZeffPerAtom(mol%n), source=0.0_wp) 
       ! Allocate nshell 
       allocate(nShellPerAtom(mol%n))
       ! Allocate ElemId
       allocate(ElemIdPerAtom(mol%n))
       ! Allocate ENPerAtom
-      allocate(electronegativityPerAtom(mol%n))
+      allocate(electronegativityPerAtom(mol%n), source=0.0_wp)
       ! Allocate atomicHardnessPerAtom
-      allocate(atomicHardnessPerAtom(mol%n))
+      allocate(atomicHardnessPerAtom(mol%n), source=0.0_wp)
 
-      ! allocate valance CN
-      allocate(valanceCNPerAtom(mol%n))
+      ! Allocate valance CN
+      allocate(valanceCNPerAtom(mol%n), source=0.0_wp)
       ! Allocate Cutoff radii for multipole electrostatics 
-      allocate(multiRadPerAtom(mol%n))
+      allocate(multiRadPerAtom(mol%n), source=0.0_wp)
 
       ! Allocate shellPoly with shape (4, mol%n)
-      allocate(shellPolyPerAtom(4, mol%n))
+      allocate(shellPolyPerAtom(4, mol%n), source=0.0_wp)
       ! Allocate selfEnergy with shape (3, mol%n)
-      allocate(selfEnergyPerAtom(3, mol%n))
+      allocate(selfEnergyPerAtom(3, mol%n), source=0.0_wp)
       ! Allocate slaterExponent with shape (3, mol%n)
-      allocate(slaterExponentPerAtom(3, mol%n))
+      allocate(slaterExponentPerAtom(3, mol%n), source=0.0_wp)
       ! Allocate kCN with shape (4, mol%n)
-      allocate(kCNPerAtom(4, mol%n))
+      allocate(kCNPerAtom(4, mol%n), source=0.0_wp)
       ! Allocate Shell Hardness with shape (3, mol%n)
-      allocate(shellHardnessPerAtom(3, mol%n))
+      allocate(shellHardnessPerAtom(3, mol%n), source=0.0_wp)
       ! Allocate angshell with shape (3, mol)
       allocate(angshellPerAtom(3, mol%n))
       ! Allocate kcnat with shape (3, mol%n)
-      allocate(kcnatPerAtom(3, mol%n))
+      allocate(kcnatPerAtom(3, mol%n), source=0.0_wp)
       ! Allocate principalQuantumNumberPerAtom (3, mol%n)
       allocate(principalQuantumNumberPerAtom(3, mol%n))
 
