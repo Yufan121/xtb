@@ -345,14 +345,14 @@ subroutine read2Param &
       call getline(iunitPerAtom,line,err) ! iunit is filename
       allocate(xtbData%perAtomXtbData)
       !!! Allocate fields of xtbData%perAtomXtbData
-      allocate(xtbData%perAtomXtbData%hamiltonian%valenceShell(mShell, max_elem))
+      allocate(xtbData%perAtomXtbData%hamiltonian%valenceShell(mShell, max_elem), source=0)
       if (any(globpar%gam3shell > 0.0_wp)) then
          allocate(xtbData%perAtomXtbData%Coulomb%thirdOrderShell(mShell, max_elem))
       end if
       allocate(xtbData%perAtomXtbData%multipole)
-      allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, max_elem))
-      allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, max_elem))
-      allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, max_elem))
+      allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, max_elem), source=0.0_wp)
+      allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, max_elem), source=0.0_wp)
+      allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, max_elem), source=0)
       !!! copy fields of xtbData to xtbData%perAtomXtbData
       ! xtbData%perAtomXtbData%level = xtbData%level ! Should be read in loop below
       ! xtbData%perAtomXtbData%name = xtbData%name ! Should be read in loop below
@@ -379,9 +379,9 @@ subroutine read2Param &
       ! Allocate Effective nuclear charge with size mol%n
       allocate(repZeffPerAtom(mol%n), source=0.0_wp) 
       ! Allocate nshell 
-      allocate(nShellPerAtom(mol%n))
+      allocate(nShellPerAtom(mol%n), source=0)
       ! Allocate ElemId
-      allocate(ElemIdPerAtom(mol%n))
+      allocate(ElemIdPerAtom(mol%n), source=0)
       ! Allocate ENPerAtom
       allocate(electronegativityPerAtom(mol%n), source=0.0_wp)
       ! Allocate atomicHardnessPerAtom
@@ -403,11 +403,11 @@ subroutine read2Param &
       ! Allocate Shell Hardness with shape (3, mol%n)
       allocate(shellHardnessPerAtom(3, mol%n), source=0.0_wp)
       ! Allocate angshell with shape (3, mol)
-      allocate(angshellPerAtom(3, mol%n))
+      allocate(angshellPerAtom(3, mol%n), source=0)
       ! Allocate kcnat with shape (3, mol%n)
       allocate(kcnatPerAtom(3, mol%n), source=0.0_wp)
       ! Allocate principalQuantumNumberPerAtom (3, mol%n)
-      allocate(principalQuantumNumberPerAtom(3, mol%n))
+      allocate(principalQuantumNumberPerAtom(3, mol%n), source=0)
 
 
       !!! loop structure, load file prarm to xtb_xtb_gfn2_perAtom (overwrite original file)
@@ -472,7 +472,7 @@ subroutine read2Param &
 
       ! Done, shell hardness tweak
       deallocate(xtbData%perAtomXtbData%coulomb%shellHardness)
-      allocate(xtbData%perAtomXtbData%coulomb%shellHardness(mShell, mol%n))
+      allocate(xtbData%perAtomXtbData%coulomb%shellHardness(mShell, mol%n), source=0.0_wp)
       call setGFN1ShellHardnessPerAtom(xtbData%perAtomXtbData%coulomb%shellHardness, nShellPerAtom, angShellPerAtom, & ! Yufan: element parameter, shellHardness
          & atomicHardnessPerAtom, atomicHardness, shellHardnessPerAtom, shellHardness, ElemIdPerAtom)
       
@@ -481,7 +481,7 @@ subroutine read2Param &
       ! xtbData%coulomb%kCN = eeqkCN(:max_elem)      ! neglect, no data for gfn2
 
       deallocate(xtbData%perAtomXtbData%hamiltonian%valenceShell)       ! May not be needed anymore
-      allocate(xtbData%perAtomXtbData%hamiltonian%valenceShell(mShell, mol%n))
+      allocate(xtbData%perAtomXtbData%hamiltonian%valenceShell(mShell, mol%n), source=0)
       call generateValenceShellData(xtbData%perAtomXtbData%hamiltonian%valenceShell, &
          & xtbData%perAtomXtbData%nShell, xtbData%perAtomXtbData%hamiltonian%angShell)
 
@@ -489,7 +489,7 @@ subroutine read2Param &
       ! Coulomb
       if (any(globpar%gam3shell > 0.0_wp)) then
          deallocate(xtbData%perAtomXtbData%coulomb%thirdOrderShell)
-         allocate(xtbData%perAtomXtbData%coulomb%thirdOrderShell(mShell, mol%n))
+         allocate(xtbData%perAtomXtbData%coulomb%thirdOrderShell(mShell, mol%n), source=0.0_wp)
          call setGFN2ThirdOrderShellPerAtom(xtbData%perAtomXtbData%Coulomb%thirdOrderShell, & ! 
             & xtbData%perAtomXtbData%nShell, xtbData%perAtomXtbData%hamiltonian%angShell, thirdOrderAtomPerAtom, &
             & globpar%gam3shell, ElemIdPerAtom)
@@ -506,17 +506,17 @@ subroutine read2Param &
       xtbData%perAtomXtbData%hamiltonian%wExp = 0.5_wp
 
       deallocate(xtbData%perAtomXtbData%hamiltonian%kCN)
-      allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, mol%n))
+      allocate(xtbData%perAtomXtbData%hamiltonian%kCN(mShell, mol%n), source=0.0_wp)
       call angToShellData(xtbData%perAtomXtbData%hamiltonian%kCN, xtbData%perAtomXtbData%nShell, &
          & xtbData%perAtomXtbData%hamiltonian%angShell, kcnatPerAtom)  ! no need for new subroutine
 
       ! setGFN2ReferenceOcc, just retrive using index, no element_specific params
       deallocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc)
-      allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, mol%n))
+      allocate(xtbData%perAtomXtbData%hamiltonian%referenceOcc(mShell, mol%n), source=0.0_wp)
       call setGFN2ReferenceOccPerAtom(xtbData%perAtomXtbData%hamiltonian, xtbData%perAtomXtbData%nShell, ElemIdPerAtom)
 
       deallocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives)
-      allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, mol%n))
+      allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, mol%n), source=0)
       call setGFN2NumberOfPrimitivesPerAtom(xtbData%perAtomXtbData%hamiltonian, xtbData%perAtomXtbData%nShell)
 
       ! Dispersion

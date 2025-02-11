@@ -1073,7 +1073,15 @@ subroutine fermismear(prt,norbs,nel,t,eig,occ,fod,e_fermi,s)
          total_number = total_number + fermifunct
          total_dfermi = total_dfermi + dfermifunct
       end do
-      change_fermi = (occt-total_number)/total_dfermi
+
+      ! change_fermi = (occt-total_number)/total_dfermi     ! commented by Yufan
+
+      ! Calculate change_fermi only if total_dfermi is not zero
+      change_fermi = 0
+      if (total_dfermi /= 0) then
+         change_fermi = (occt - total_number) / total_dfermi
+      endif
+
       e_fermi = e_fermi+change_fermi
       if (abs(occt-total_number).le.thr) exit
    enddo
