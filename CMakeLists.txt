@@ -54,11 +54,7 @@ if(NOT TARGET "cpcmx::cpcmx" AND WITH_CPCMX)
    add_compile_definitions(WITH_CPCMX)
 endif()
 
-<<<<<<< HEAD
-find_package(numsa ) 
-=======
 find_package(numsa )
->>>>>>> 40fee2ec481850e561c0964fdfea5548316fc3d1
 
 if(NOT TARGET "test-drive::test-drive")
   find_package("test-drive" REQUIRED)

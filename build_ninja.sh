@@ -13,7 +13,8 @@ fi
 
 # Load the necessary module and run the build command
 module load cmake/3.27.7
-cmake -B_build -S. -GNinja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_FLAGS_$BUILD_TYPE="$C_FLAGS" -DCMAKE_Fortran_FLAGS_$BUILD_TYPE="$FORTRAN_FLAGS" -DCMAKE_INSTALL_PREFIX=/scratch/pawsey0799/yx7184/xtb_install
+module load gcc/12.2.0
+cmake -B_build -S. -GNinja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_FLAGS_$BUILD_TYPE="$C_FLAGS" -DCMAKE_Fortran_FLAGS_$BUILD_TYPE="$FORTRAN_FLAGS" -DCMAKE_INSTALL_PREFIX=$SCRATCH/xtb_install
 ninja -C _build
 ninja -C _build install
 
