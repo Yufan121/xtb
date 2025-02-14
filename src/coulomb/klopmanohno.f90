@@ -265,7 +265,7 @@ subroutine initKlopmanOhnoPerAtom(self, env, id, lattice, boundaryCond, gav, har
          self%hardness(:, ii) = hardnessPerAtom(:, ii)       ! Done
       end do
    else
-      stop 'Not implemented' 
+      stop 'Not implemented'  ! why? 
       self%hardness = hardness
    end if
 

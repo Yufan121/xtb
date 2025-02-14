@@ -351,7 +351,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
    integer, intent(inout) :: ihomob
 !! ------------------------------------------------------------------------
    real(wp),intent(in)    :: H0(ndim*(ndim+1)/2)
-   real(wp),intent(out)   :: H(ndim,ndim)
+   real(wp),intent(out)   :: H(ndim,ndim) 
    real(wp),intent(inout) :: P(ndim,ndim)
    real(wp),intent(inout) :: X(ndim,ndim)
    real(wp),intent(in)    :: S(ndim,ndim)
@@ -461,7 +461,7 @@ subroutine scc(env,xtbData,solver,n,nel,nopen,ndim,ndp,nqp,nmat,nshell, &
          ihomob=0
       endif
       if (ihomoa+1.le.ndim) then
-         call fermismear(.false.,ndim,ihomoa,et,emo,focca,nfoda,efa,ga)
+         call fermismear(.false.,ndim,ihomoa,et,emo,focca,nfoda,efa,ga) ! emo is eig, and H is different
       endif
       if (ihomob+1.le.ndim) then
          call fermismear(.false.,ndim,ihomob,et,emo,foccb,nfodb,efb,gb)
@@ -1073,7 +1073,15 @@ subroutine fermismear(prt,norbs,nel,t,eig,occ,fod,e_fermi,s)
          total_number = total_number + fermifunct
          total_dfermi = total_dfermi + dfermifunct
       end do
-      change_fermi = (occt-total_number)/total_dfermi
+
+      ! change_fermi = (occt-total_number)/total_dfermi     ! commented by Yufan
+
+      ! Calculate change_fermi only if total_dfermi is not zero
+      change_fermi = 0
+      if (total_dfermi /= 0) then
+         change_fermi = (occt - total_number) / total_dfermi
+      endif
+
       e_fermi = e_fermi+change_fermi
       if (abs(occt-total_number).le.thr) exit
    enddo
