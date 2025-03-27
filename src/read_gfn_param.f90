@@ -369,44 +369,79 @@ subroutine read2Param &
 
       !!! Allocate xtb_gfn2_per_atom 
       ! Allocate thirdOrderAtom with size mol%n
+      if (allocated(thirdOrderAtomPerAtom)) deallocate(thirdOrderAtomPerAtom)
       allocate(thirdOrderAtomPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate repAlpha with size mol%n
+      if (allocated(repAlphaPerAtom)) deallocate(repAlphaPerAtom)
       allocate(repAlphaPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate dipKernel with size mol%n
+      if (allocated(dipKernelPerAtom)) deallocate(dipKernelPerAtom)
       allocate(dipKernelPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate quadKernel with size mol%n
+      if (allocated(quadKernelPerAtom)) deallocate(quadKernelPerAtom)
       allocate(quadKernelPerAtom(mol%n), source=0.0_wp) 
+      
       ! Allocate Effective nuclear charge with size mol%n
+      if (allocated(repZeffPerAtom)) deallocate(repZeffPerAtom)
       allocate(repZeffPerAtom(mol%n), source=0.0_wp) 
+      
       ! Allocate nshell 
+      if (allocated(nShellPerAtom)) deallocate(nShellPerAtom)
       allocate(nShellPerAtom(mol%n), source=0)
+      
       ! Allocate ElemId
+      if (allocated(ElemIdPerAtom)) deallocate(ElemIdPerAtom)
       allocate(ElemIdPerAtom(mol%n), source=0)
+      
       ! Allocate ENPerAtom
+      if (allocated(electronegativityPerAtom)) deallocate(electronegativityPerAtom)
       allocate(electronegativityPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate atomicHardnessPerAtom
+      if (allocated(atomicHardnessPerAtom)) deallocate(atomicHardnessPerAtom)
       allocate(atomicHardnessPerAtom(mol%n), source=0.0_wp)
 
       ! Allocate valance CN
+      if (allocated(valanceCNPerAtom)) deallocate(valanceCNPerAtom)
       allocate(valanceCNPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate Cutoff radii for multipole electrostatics 
+      if (allocated(multiRadPerAtom)) deallocate(multiRadPerAtom)
       allocate(multiRadPerAtom(mol%n), source=0.0_wp)
 
       ! Allocate shellPoly with shape (4, mol%n)
+      if (allocated(shellPolyPerAtom)) deallocate(shellPolyPerAtom)
       allocate(shellPolyPerAtom(4, mol%n), source=0.0_wp)
+      
       ! Allocate selfEnergy with shape (3, mol%n)
+      if (allocated(selfEnergyPerAtom)) deallocate(selfEnergyPerAtom)
       allocate(selfEnergyPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate slaterExponent with shape (3, mol%n)
+      if (allocated(slaterExponentPerAtom)) deallocate(slaterExponentPerAtom)
       allocate(slaterExponentPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate kCN with shape (4, mol%n)
+      if (allocated(kCNPerAtom)) deallocate(kCNPerAtom)
       allocate(kCNPerAtom(4, mol%n), source=0.0_wp)
+      
       ! Allocate Shell Hardness with shape (3, mol%n)
+      if (allocated(shellHardnessPerAtom)) deallocate(shellHardnessPerAtom)
       allocate(shellHardnessPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate angshell with shape (3, mol)
+      if (allocated(angshellPerAtom)) deallocate(angshellPerAtom)
       allocate(angshellPerAtom(3, mol%n), source=0)
+      
       ! Allocate kcnat with shape (3, mol%n)
+      if (allocated(kcnatPerAtom)) deallocate(kcnatPerAtom)
       allocate(kcnatPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate principalQuantumNumberPerAtom (3, mol%n)
+      if (allocated(principalQuantumNumberPerAtom)) deallocate(principalQuantumNumberPerAtom)
       allocate(principalQuantumNumberPerAtom(3, mol%n), source=0)
 
 
@@ -1696,7 +1731,7 @@ subroutine read_elempar
    use xtb_mctc_strings
    use xtb_readin
    implicit none
-   character(len=:), allocatable :: key, val
+   character(len=:), allocatable :: key, val  
    integer :: iz, ie
    if (getValue(env,line(4:5),iz)) then
       timestp(iz) = line(7:len_trim(line))

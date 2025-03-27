@@ -24,6 +24,8 @@ module xtb_optimizer
    use xtb_bfgs
    use xtb_hessian, only : numhess
    use xtb_david2
+   use xtb_type_param, only : TxTBParameter
+   use xtb_xtb_calculator, only : TxTBCalculator
    implicit none
 
    !> time profiling
@@ -302,6 +304,12 @@ subroutine ancopt(env,ilog,mol,chk,calc, &
    !> debug mode
    logical, parameter :: debug(2) = [.false.,.false.]
    character(len=9):: hessfmt
+
+   !> For parameter reading: Yufan
+   type(TxTBParameter) :: globpar
+   integer :: ich, ichPerAtom
+   logical :: exist
+   character(len=:), allocatable :: filename, filenamePerAtom
 
    ! print ANCopt header !
    call ancopt_header(env%unit,set%veryverbose)
@@ -626,6 +634,9 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    use xtb_type_calculator
    use xtb_type_data
    use xtb_type_timer
+   use xtb_readparam, only : readParam, read2Param ! import xtb_readparam Yufan
+   use xtb_mctc_systools, only : rdpath ! import xtb_mctc_systools Yufan
+
 
    implicit none
 
@@ -719,6 +730,12 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    parameter (r4dum=1.e-8)
    parameter (smallreal=1.d-14)
 
+   !> For parameter reading: Yufan
+   type(TxTBParameter) :: globpar
+   integer :: ich, ichPerAtom
+   logical :: exist
+   character(len=:), allocatable :: filename, filenamePerAtom
+
 !----------------------------------------------------------------!
 !--------------------- Initialization ---------------------------!
 !----------------------------------------------------------------!
@@ -772,6 +789,22 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    if (profile) call timer%measure(4,'coordinate transformation')
    call anc%get_cartesian(mol%xyz)
    if (profile) call timer%measure(4)
+
+   ! Re-read parameters at each iteration: Yufan
+   select type(calc)
+   type is(TxTBCalculator)
+      call rdpath(env%xtbpath, 'param_gfn2-xtb.txt', filename, exist)
+      if (exist) then
+         call rdpath(env%xtbpath, 'param_gfn2-xtb-per-atom.txt', filenamePerAtom, exist)
+         if (exist) then
+            call open_file(ich, filename, 'r')
+            call open_file(ichPerAtom, filenamePerAtom, 'r')
+            call read2Param(env, ich, ichPerAtom, globpar, calc%xtbData, .true., mol)
+            call close_file(ich)
+            call close_file(ichPerAtom)
+         endif
+      endif
+   end select
 
    ! single point + analytical gradients !
    if (profile) call timer%measure(5,'single point calculation')

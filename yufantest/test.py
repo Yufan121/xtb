@@ -1,4 +1,4 @@
-nnxtb = '/scratch/pawsey0799/yx7184/githubs/NNxTB/scratchfolder_par_6_separate_ele_mace'
+nnxtb = '../../NNxTB/scratchfolder_par_6_2_test_new'
 import sys
 sys.path.append(nnxtb) 
 import subprocess
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Process xTB calculations.')
     parser.add_argument('--xtb_modified', type=str, default='xtb', help='Path to the modified xTB executable.')
-    parser.add_argument('--xtb_vanilla', type=str, default='/scratch/pawsey0799/yx7184/xtb_install_vanilla/bin/xtb', help='Path to the vanilla xTB executable.')
+    parser.add_argument('--xtb_vanilla', type=str, default='../../../xtb_install_vanilla/bin/xtb', help='Path to the vanilla xTB executable.')
     parser.add_argument('--xtbpath', type=str, default='/path/to/xtb/share/xtb', help='Path to the xTB share directory.')
     parser.add_argument('--xyzfile', type=str, default='molecule.xyz', help='Path to the input XYZ file.')    
     
