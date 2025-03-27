@@ -1,4 +1,4 @@
-nnxtb = '/scratch/pawsey0799/yx7184/githubs/NNxTB/scratchfolder_par_6_separate_ele_mace'
+nnxtb = '/scratch/pawsey0799/yx7184/githubs/NNxTB/scratchfolder_par_6_2_test_new'
 import sys
 sys.path.append(nnxtb) 
 import subprocess
