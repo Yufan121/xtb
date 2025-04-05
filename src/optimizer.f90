@@ -790,6 +790,10 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    call anc%get_cartesian(mol%xyz)
    if (profile) call timer%measure(4)
 
+   ! call python script to run NN evaluation
+   call system('source ~/.bashrc; conda activate dxtb-dev; python evaluate_single_frame.py')
+
+
    ! Re-read parameters at each iteration: Yufan
    select type(calc)
    type is(TxTBCalculator)
