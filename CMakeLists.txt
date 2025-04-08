@@ -254,6 +254,36 @@ install(
    "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 
+# xtb-parameters 
+install(
+  FILES
+  "${PROJECT_SOURCE_DIR}/param_gfn0-xtb.txt"
+  "${PROJECT_SOURCE_DIR}/param_gfn1-xtb.txt"
+  "${PROJECT_SOURCE_DIR}/param_gfn1-si-xtb.txt"
+  "${PROJECT_SOURCE_DIR}/param_gfn2-xtb.txt"
+  "${PROJECT_SOURCE_DIR}/param_ipea-xtb.txt"
+  "${PROJECT_SOURCE_DIR}/.param_gfnff.xtb"
+  DESTINATION
+  "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
+)
+
+# Install Python scripts
+install(
+  FILES
+  "${PROJECT_SOURCE_DIR}/python/scripts/evaluate_single_frame.py"
+  DESTINATION
+  "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
+)
+
+# Install the entire python/scripts directory
+install(
+  DIRECTORY
+  "${PROJECT_SOURCE_DIR}/python/scripts/"
+  DESTINATION
+  "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/python/scripts"
+  FILES_MATCHING PATTERN "*.py"
+)
+
 if (INSTALL_MODULES)
    install(
       DIRECTORY
@@ -262,19 +292,6 @@ if (INSTALL_MODULES)
       "${CMAKE_INSTALL_INCLUDEDIR}"
    )
 endif()
-
-# xtb-parameters 
-install(
-   FILES
-   "${PROJECT_SOURCE_DIR}/param_gfn0-xtb.txt"
-   "${PROJECT_SOURCE_DIR}/param_gfn1-xtb.txt"
-   "${PROJECT_SOURCE_DIR}/param_gfn1-si-xtb.txt"
-   "${PROJECT_SOURCE_DIR}/param_gfn2-xtb.txt"
-   "${PROJECT_SOURCE_DIR}/param_ipea-xtb.txt"
-   "${PROJECT_SOURCE_DIR}/.param_gfnff.xtb"
-   DESTINATION
-   "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
-)
 
 # Build output artifacts
 if (WITH_OBJECT)
