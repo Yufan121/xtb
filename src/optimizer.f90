@@ -791,44 +791,44 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    eold = energy
 
 
-   !!!! YUFAN modified part !!!!
-   ! call python script to run NN evaluation
-   ! First check installation path (where parameter files are also stored)
-   call rdpath(env%xtbpath, 'evaluate_single_frame.py', python_script, script_exists)
+   ! !!!! YUFAN modified part !!!!
+   ! ! call python script to run NN evaluation
+   ! ! First check installation path (where parameter files are also stored)
+   ! call rdpath(env%xtbpath, 'evaluate_single_frame.py', python_script, script_exists)
    
-   if (.not. script_exists) then
-      ! Try in python/scripts subdirectory in xtbpath
-      call rdpath(env%xtbpath, 'python/scripts/evaluate_single_frame.py', python_script, script_exists)
+   ! if (.not. script_exists) then
+   !    ! Try in python/scripts subdirectory in xtbpath
+   !    call rdpath(env%xtbpath, 'python/scripts/evaluate_single_frame.py', python_script, script_exists)
       
-      if (.not. script_exists) then
-         ! If not found in xtb path, try current directory
-         python_script = './evaluate_single_frame.py'
-         inquire(file=python_script, exist=script_exists)
+   !    if (.not. script_exists) then
+   !       ! If not found in xtb path, try current directory
+   !       python_script = './evaluate_single_frame.py'
+   !       inquire(file=python_script, exist=script_exists)
          
-         if (.not. script_exists) then
-            ! Try in python/scripts subdirectory (development environment)
-            python_script = './python/scripts/evaluate_single_frame.py'
-            inquire(file=python_script, exist=script_exists)
-         endif
-      endif
-   end if
+   !       if (.not. script_exists) then
+   !          ! Try in python/scripts subdirectory (development environment)
+   !          python_script = './python/scripts/evaluate_single_frame.py'
+   !          inquire(file=python_script, exist=script_exists)
+   !       endif
+   !    endif
+   ! end if
    
-   if (script_exists) then
-      if (pr) write(env%unit,'(a,a)') 'Running neural network evaluation from: ', python_script
+   ! if (script_exists) then
+   !    if (pr) write(env%unit,'(a,a)') 'Running neural network evaluation from: ', python_script
       
-      ! Create a command that includes the right environment and proper arguments
-      ! Current structure is written to 'xtbopt.xyz' by default during optimization
-      cmd = 'source ~/.bashrc; conda activate dxtb-dev; python ' // python_script // &
-            ' models/dxtb_model.pt output_params xtbopt.xyz'
+   !    ! Create a command that includes the right environment and proper arguments
+   !    ! Current structure is written to 'xtbopt.xyz' by default during optimization
+   !    cmd = 'source ~/.bashrc; conda activate dxtb-dev; python ' // python_script // &
+   !          ' models/dxtb_model.pt output_params xtbopt.xyz'
       
-      if (pr) write(env%unit,'(a,a)') 'Running command: ', trim(cmd)
-      call system(trim(cmd))
-   else
-      ! Handle the case where the script isn't found
-      call env%error('Could not find evaluate_single_frame.py script', source)
-      fail = .true.
-      return
-   endif
+   !    if (pr) write(env%unit,'(a,a)') 'Running command: ', trim(cmd)
+   !    call system(trim(cmd))
+   ! else
+   !    ! Handle the case where the script isn't found
+   !    call env%error('Could not find evaluate_single_frame.py script', source)
+   !    fail = .true.
+   !    return
+   ! endif
 
    ! Re-read parameters at each iteration: Yufan
    select type(calc)
