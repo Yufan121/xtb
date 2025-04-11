@@ -91,7 +91,9 @@ subroutine read2Param &
    integer :: err
    logical :: newFormat
 
-   disp = dftd_parameter(s6=1.0_wp, s8=0.0_wp, a1=0.0_wp, a2=0.0_wp, s9=0.0_wp)
+   ! disp = dftd_parameter(s6=1.0_wp, s8=0.0_wp, a1=0.0_wp, a2=0.0_wp, s9=0.0_wp)  ! why s6 is 1.0_wp?
+   disp = dftd_parameter(s6=0.0_wp, s8=0.0_wp, a1=0.0_wp, a2=0.0_wp, s9=0.0_wp)  ! why s6 is 1.0_wp?
+
    globpar = TxTBParameter()
 
    principalQuantumNumber=0
@@ -203,7 +205,7 @@ subroutine read2Param &
    xtbData%coulomb%chargeWidth = chargeWidth(:max_elem)
 
    ! Dispersion
-   xtbData%dispersion%dpar = disp
+   xtbData%dispersion%dpar = disp      ! disp% any param are changed in readgroups
    xtbData%dispersion%g_a = 3.0_wp
    xtbData%dispersion%g_c = 2.0_wp
    xtbData%dispersion%wf  = 6.0_wp
@@ -1689,11 +1691,11 @@ subroutine gfn_globpar(key,val,globpar)
    case('dispb'); if (getValue(env,val,ddum)) globpar%dispb = ddum
    case('dispc'); if (getValue(env,val,ddum)) globpar%dispc = ddum
    case('dispatm'); if (getValue(env,val,ddum)) globpar%dispatm = ddum
-   case('a1'); if (getValue(env,val,ddum)) disp%a1 = ddum
-   case('a2'); if (getValue(env,val,ddum)) disp%a2 = ddum
-   case('s6'); if (getValue(env,val,ddum)) disp%s6 = ddum
-   case('s8'); if (getValue(env,val,ddum)) disp%s8 = ddum
-   case('s9'); if (getValue(env,val,ddum)) disp%s9 = ddum
+   case('a1'); if (getValue(env,val,ddum)) disp%a1 = disp%a1 + ddum      ! modified
+   case('a2'); if (getValue(env,val,ddum)) disp%a2 = disp%a2 + ddum      ! modified
+   case('s6'); if (getValue(env,val,ddum)) disp%s6 = disp%s6 + ddum      ! modified
+   case('s8'); if (getValue(env,val,ddum)) disp%s8 = disp%s8 + ddum      ! modified
+   case('s9'); if (getValue(env,val,ddum)) disp%s9 = disp%s9 + ddum      ! modified
    case('xbdamp'); if (getValue(env,val,ddum)) globpar%xbdamp = ddum
    case('xbrad'); if (getValue(env,val,ddum)) globpar%xbrad = ddum
    case('aesdmp3'); if (getValue(env,val,ddum)) globpar%aesdmp3 = ddum
