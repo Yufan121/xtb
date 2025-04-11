@@ -1,3 +1,16 @@
+#!/bin/bash
+
+# Check number of arguments
+if [ $# -lt 5 ]; then
+    echo "Usage: $0 <input_file> <xtb_path> <--output> <--fe|--vib> <executable>"
+    echo "  <input_file>    : Input coordinate file"
+    echo "  <xtb_path>      : Path to xtb installation"
+    echo "  <--output>      : Optional flag to show output"
+    echo "  <--fe|--vib>    : Calculation type (free energy or vibrational)"
+    echo "  <executable>    : Path to xtb executable"
+    exit 1
+fi
+
 # Set the XTBPATH environment variable
 export XTBPATH=$2
 
