@@ -554,6 +554,8 @@ subroutine read2Param &
       allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, mol%n), source=0)
       call setGFN2NumberOfPrimitivesPerAtom(xtbData%perAtomXtbData%hamiltonian, xtbData%perAtomXtbData%nShell)
 
+      xtbData%perAtomXtbData%dispersion%dpar = disp  ! after reading dispersion parameters ! TODO
+
       ! Dispersion
       call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
          & xtbData%dispersion%g_c, p_refq_gfn2xtb)
