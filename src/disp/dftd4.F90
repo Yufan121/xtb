@@ -166,11 +166,13 @@ subroutine newD4Model(dispm,g_a,g_c,mode)
    dispm%atoms = 0
    dispm%nref = 0
 
-   do ia = 1, 118
+
+   ! the below loop is to get the number of reference atoms and the polarizability
+   do ia = 1, 118 ! loop over the atoms
       cncount = 0
       cncount(0) = 1
       dispm%nref(ia) = refn(ia)
-      do j = 1, refn(ia)
+      do j = 1, refn(ia)   ! loop over the reference atoms
          is = refsys(j,ia)
          iz = zeff(is)
          sec_al = sscale(is)*secaiw(:,is) &
@@ -189,9 +191,9 @@ subroutine newD4Model(dispm,g_a,g_c,mode)
    ! integrate C6 coefficients
    do i = 1, 118
       do j = 1, i
-         do ii = 1, dispm%nref(i)         ! TODO
-            do jj = 1, dispm%nref(j)
-               alpha = dispm%alpha(:,ii,i)*dispm%alpha(:,jj,j)
+         do ii = 1, dispm%nref(i)         ! loop over the reference atoms
+            do jj = 1, dispm%nref(j)         ! loop over the reference atoms
+               alpha = dispm%alpha(:,ii,i)*dispm%alpha(:,jj,j) ! this alpha means polarizability
                c6 = thopi * trapzd(alpha)
                dispm%c6(jj,ii,j,i) = c6
                dispm%c6(ii,jj,i,j) = c6

@@ -203,7 +203,7 @@ subroutine read2Param &
    xtbData%coulomb%chargeWidth = chargeWidth(:max_elem)
 
    ! Dispersion
-   xtbData%dispersion%dpar = disp
+   xtbData%dispersion%dpar = disp   ! contains s6, s8, a1, a2, s9
    xtbData%dispersion%g_a = 3.0_wp
    xtbData%dispersion%g_c = 2.0_wp
    xtbData%dispersion%wf  = 6.0_wp
@@ -554,9 +554,12 @@ subroutine read2Param &
       allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, mol%n), source=0)
       call setGFN2NumberOfPrimitivesPerAtom(xtbData%perAtomXtbData%hamiltonian, xtbData%perAtomXtbData%nShell)
 
-      ! Dispersion
-      call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
-         & xtbData%dispersion%g_c, p_refq_gfn2xtb)
+      xtbData%perAtomXtbData%dispersion%dpar = disp
+
+
+      ! Dispersion   ！ TODO
+      call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &     
+         & xtbData%dispersion%g_c, p_refq_gfn2xtb) 
 
       
    end select
