@@ -1691,11 +1691,11 @@ subroutine gfn_globpar(key,val,globpar)
    case('dispb'); if (getValue(env,val,ddum)) globpar%dispb = ddum
    case('dispc'); if (getValue(env,val,ddum)) globpar%dispc = ddum
    case('dispatm'); if (getValue(env,val,ddum)) globpar%dispatm = ddum
-   case('a1'); if (getValue(env,val,ddum)) disp%a1 = disp%a1 + ddum      ! modified
-   case('a2'); if (getValue(env,val,ddum)) disp%a2 = disp%a2 + ddum      ! modified
-   case('s6'); if (getValue(env,val,ddum)) disp%s6 = disp%s6 + ddum      ! modified
-   case('s8'); if (getValue(env,val,ddum)) disp%s8 = disp%s8 + ddum      ! modified
-   case('s9'); if (getValue(env,val,ddum)) disp%s9 = disp%s9 + ddum      ! modified
+   case('a1'); if (getValue(env,val,ddum)) disp%a1 = ddum      
+   case('a2'); if (getValue(env,val,ddum)) disp%a2 = ddum
+   case('s6'); if (getValue(env,val,ddum)) disp%s6 = ddum
+   case('s8'); if (getValue(env,val,ddum)) disp%s8 = ddum
+   case('s9'); if (getValue(env,val,ddum)) disp%s9 = ddum
    case('xbdamp'); if (getValue(env,val,ddum)) globpar%xbdamp = ddum
    case('xbrad'); if (getValue(env,val,ddum)) globpar%xbrad = ddum
    case('aesdmp3'); if (getValue(env,val,ddum)) globpar%aesdmp3 = ddum
