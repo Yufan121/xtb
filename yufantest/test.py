@@ -75,6 +75,7 @@ def obtain_modified_xtb(xtb_modified=None, xtbpath=None, xyzfile=None, param_fil
 
 def compare_results(vanilla, modified, name):
     if not np.allclose(vanilla, modified, atol=0):
+        print(f"{vanilla}, {modified}")        
         raise ValueError(f"{name} mismatch: Vanilla vs Modified")
     print(f"{name} match.")
     

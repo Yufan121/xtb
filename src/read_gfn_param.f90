@@ -414,6 +414,10 @@ subroutine read2Param &
       if (allocated(multiRadPerAtom)) deallocate(multiRadPerAtom)
       allocate(multiRadPerAtom(mol%n), source=0.0_wp)
 
+      ! Allocate C6PerAtom
+      if (allocated(C6PerAtom)) deallocate(C6PerAtom)
+      allocate(C6PerAtom(mol%n), source=0.0_wp)
+
       ! Allocate shellPoly with shape (4, mol%n)
       if (allocated(shellPolyPerAtom)) deallocate(shellPolyPerAtom)
       allocate(shellPolyPerAtom(4, mol%n), source=0.0_wp)
@@ -559,9 +563,13 @@ subroutine read2Param &
       xtbData%perAtomXtbData%dispersion%dpar = disp  ! after reading dispersion parameters ! TODO
 
       ! Dispersion
-      call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
-         & xtbData%dispersion%g_c, p_refq_gfn2xtb)
+      ! call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
+      !    & xtbData%dispersion%g_c, p_refq_gfn2xtb)
 
+      ! assign C6PerAtom
+      allocate(xtbData%dispersion%C6PerAtom(mol%n), source=0.0_wp)
+      ! if not assigned, raise an error
+      xtbData%dispersion%C6PerAtom = C6PerAtom(:mol%n)
       
    end select
 
@@ -1256,6 +1264,7 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the atomic id
    case('ele_id');  if (getValue(env,val,idum)) ElemIdPerAtom(iz) = idum 
    case('mpvcn'); if (getValue(env,val,ddum)) valanceCNPerAtom(iz) = ddum
    case('mprad'); if (getValue(env,val,ddum)) multiRadPerAtom(iz) = ddum
+   case('c6'); if (getValue(env,val,ddum)) C6PerAtom(iz) = ddum   ! c6 coefficient
    end select
 end subroutine gfn_elempar_per_atom
 
