@@ -176,7 +176,8 @@ contains
 !! ========================================================================
 !  debugging variables for numerical gradient
       logical, parameter :: gen_param = .false.
-      logical, parameter :: debug = .false.
+      ! logical, parameter :: debug = .false.
+      logical, parameter :: debug = .true.
       type(TRestart) :: wf0
       real(wp), allocatable :: coord(:, :), numg(:, :), gdum(:, :)
       real(wp) :: sdum(3, 3), nums(3, 3), eps(3, 3), latt(3, 3)

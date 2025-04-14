@@ -62,6 +62,10 @@ module xtb_xtb_data
       !> Reference data for the dispersion
       type(TDispersionModel) :: dispm
 
+      !> Yufan: Per-atom C6 coefficients
+      real(wp), allocatable :: C6PerAtom(:)
+
+
    end type TDispersionData
 
 

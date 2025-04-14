@@ -105,6 +105,8 @@ module xtb_xtb_gfn2_per_atom
   ! atomicHardnessPerAtom
   real(wp), allocatable :: atomicHardnessPerAtom(:)
 
+  ! C6 coefficient (1, natom)
+  real(wp), allocatable :: C6PerAtom(:)
   ! Shell polynomials to scale Hamiltonian elements, (4, natom)
   real(wp), allocatable :: shellPolyPerAtom(:, :)
 

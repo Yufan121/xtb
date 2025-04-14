@@ -24,6 +24,8 @@ module xtb_optimizer
    use xtb_bfgs
    use xtb_hessian, only : numhess
    use xtb_david2
+   use xtb_type_param, only : TxTBParameter
+   use xtb_xtb_calculator, only : TxTBCalculator
    implicit none
 
    !> time profiling
@@ -302,6 +304,17 @@ subroutine ancopt(env,ilog,mol,chk,calc, &
    !> debug mode
    logical, parameter :: debug(2) = [.false.,.false.]
    character(len=9):: hessfmt
+
+   !> For parameter reading: Yufan
+   type(TxTBParameter) :: globpar
+   integer :: ich, ichPerAtom
+   logical :: exist
+   character(len=:), allocatable :: filename, filenamePerAtom
+   
+   !> For Python script evaluation: Yufan
+   character(len=:), allocatable :: python_script
+   logical :: script_exists
+   character(len=1024) :: cmd
 
    ! print ANCopt header !
    call ancopt_header(env%unit,set%veryverbose)
@@ -626,6 +639,9 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    use xtb_type_calculator
    use xtb_type_data
    use xtb_type_timer
+   use xtb_readparam, only : readParam, read2Param ! import xtb_readparam Yufan
+   use xtb_mctc_systools, only : rdpath ! import xtb_mctc_systools Yufan
+
 
    implicit none
 
@@ -719,6 +735,17 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    parameter (r4dum=1.e-8)
    parameter (smallreal=1.d-14)
 
+   !> For parameter reading: Yufan
+   type(TxTBParameter) :: globpar
+   integer :: ich, ichPerAtom
+   logical :: exist
+   character(len=:), allocatable :: filename, filenamePerAtom
+   
+   !> For Python script evaluation: Yufan
+   character(len=:), allocatable :: python_script
+   logical :: script_exists
+   character(len=1024) :: cmd
+
 !----------------------------------------------------------------!
 !--------------------- Initialization ---------------------------!
 !----------------------------------------------------------------!
@@ -763,6 +790,64 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    gnold= gnorm
    eold = energy
 
+
+   ! !!!! YUFAN modified part !!!!
+   ! ! call python script to run NN evaluation
+   ! ! First check installation path (where parameter files are also stored)
+   ! call rdpath(env%xtbpath, 'evaluate_single_frame.py', python_script, script_exists)
+   
+   ! if (.not. script_exists) then
+   !    ! Try in python/scripts subdirectory in xtbpath
+   !    call rdpath(env%xtbpath, 'python/scripts/evaluate_single_frame.py', python_script, script_exists)
+      
+   !    if (.not. script_exists) then
+   !       ! If not found in xtb path, try current directory
+   !       python_script = './evaluate_single_frame.py'
+   !       inquire(file=python_script, exist=script_exists)
+         
+   !       if (.not. script_exists) then
+   !          ! Try in python/scripts subdirectory (development environment)
+   !          python_script = './python/scripts/evaluate_single_frame.py'
+   !          inquire(file=python_script, exist=script_exists)
+   !       endif
+   !    endif
+   ! end if
+   
+   ! if (script_exists) then
+   !    if (pr) write(env%unit,'(a,a)') 'Running neural network evaluation from: ', python_script
+      
+   !    ! Create a command that includes the right environment and proper arguments
+   !    ! Current structure is written to 'xtbopt.xyz' by default during optimization
+   !    cmd = 'source ~/.bashrc; conda activate dxtb-dev; python ' // python_script // &
+   !          ' models/dxtb_model.pt output_params xtbopt.xyz'
+      
+   !    if (pr) write(env%unit,'(a,a)') 'Running command: ', trim(cmd)
+   !    call system(trim(cmd))
+   ! else
+   !    ! Handle the case where the script isn't found
+   !    call env%error('Could not find evaluate_single_frame.py script', source)
+   !    fail = .true.
+   !    return
+   ! endif
+
+   ! Re-read parameters at each iteration: Yufan
+   select type(calc)
+   type is(TxTBCalculator)
+      call rdpath(env%xtbpath, 'param_gfn2-xtb.txt', filename, exist)
+      if (exist) then
+         call rdpath(env%xtbpath, 'param_gfn2-xtb-per-atom.txt', filenamePerAtom, exist)
+         if (exist) then
+            call open_file(ich, filename, 'r')
+            call open_file(ichPerAtom, filenamePerAtom, 'r')
+            call read2Param(env, ich, ichPerAtom, globpar, calc%xtbData, .true., mol)
+            call close_file(ich)
+            call close_file(ichPerAtom)
+         endif
+      endif
+   end select
+   !!!! YUFAN modified part END !!!!
+
+
    ! dE via 2-nd order Taylor expansion !
    ! E = E0 + delta * G + delta^2 * H !
    if (ii > 1) &
@@ -772,6 +857,7 @@ subroutine relax(env,iter,mol,anc,restart,maxcycle,maxdispl,ethr,gthr, &
    if (profile) call timer%measure(4,'coordinate transformation')
    call anc%get_cartesian(mol%xyz)
    if (profile) call timer%measure(4)
+
 
    ! single point + analytical gradients !
    if (profile) call timer%measure(5,'single point calculation')

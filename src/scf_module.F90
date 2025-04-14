@@ -532,7 +532,7 @@ subroutine scf(env, mol, wfn, basis, pcem, xtbData, solvation, &
       call d3_gradient &
          & (mol, trans, xtbData%dispersion%dpar, 4.0_wp, 60.0_wp, &
          &  cn, dcndr, dcndL, ed, gradient, sigma)
-   else
+   else  ! init dispersion D4
       allocate(scD4)
       ! call xtb_xtb_dispersion::initdispersion
       call init(scD4, xtbData%dispersion, mol)        ! TODO

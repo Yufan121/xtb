@@ -179,8 +179,17 @@ xtb_parameter_files = [
   '.param_gfnff.xtb',
 ]
 
+# Python scripts for neural network evaluation
+xtb_python_scripts = [
+  'python/scripts/evaluate_single_frame.py',
+]
+
 if install
   install_data(xtb_parameter_files)
+  install_data(xtb_python_scripts)
+  
+  # Install the entire python/scripts directory
+  install_subdir('python/scripts', install_dir: get_option('datadir')/meson.project_name())
 endif
 
 if install_modules

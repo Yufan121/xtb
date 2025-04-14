@@ -91,7 +91,9 @@ subroutine read2Param &
    integer :: err
    logical :: newFormat
 
-   disp = dftd_parameter(s6=1.0_wp, s8=0.0_wp, a1=0.0_wp, a2=0.0_wp, s9=0.0_wp)
+   ! disp = dftd_parameter(s6=1.0_wp, s8=0.0_wp, a1=0.0_wp, a2=0.0_wp, s9=0.0_wp)  ! why s6 is 1.0_wp?
+   disp = dftd_parameter(s6=0.0_wp, s8=0.0_wp, a1=0.0_wp, a2=0.0_wp, s9=0.0_wp)  ! why s6 is 1.0_wp?
+
    globpar = TxTBParameter()
 
    principalQuantumNumber=0
@@ -203,7 +205,7 @@ subroutine read2Param &
    xtbData%coulomb%chargeWidth = chargeWidth(:max_elem)
 
    ! Dispersion
-   xtbData%dispersion%dpar = disp
+   xtbData%dispersion%dpar = disp      ! disp% any param are changed in readgroups
    xtbData%dispersion%g_a = 3.0_wp
    xtbData%dispersion%g_c = 2.0_wp
    xtbData%dispersion%wf  = 6.0_wp
@@ -369,44 +371,83 @@ subroutine read2Param &
 
       !!! Allocate xtb_gfn2_per_atom 
       ! Allocate thirdOrderAtom with size mol%n
+      if (allocated(thirdOrderAtomPerAtom)) deallocate(thirdOrderAtomPerAtom)
       allocate(thirdOrderAtomPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate repAlpha with size mol%n
+      if (allocated(repAlphaPerAtom)) deallocate(repAlphaPerAtom)
       allocate(repAlphaPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate dipKernel with size mol%n
+      if (allocated(dipKernelPerAtom)) deallocate(dipKernelPerAtom)
       allocate(dipKernelPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate quadKernel with size mol%n
+      if (allocated(quadKernelPerAtom)) deallocate(quadKernelPerAtom)
       allocate(quadKernelPerAtom(mol%n), source=0.0_wp) 
+      
       ! Allocate Effective nuclear charge with size mol%n
+      if (allocated(repZeffPerAtom)) deallocate(repZeffPerAtom)
       allocate(repZeffPerAtom(mol%n), source=0.0_wp) 
+      
       ! Allocate nshell 
+      if (allocated(nShellPerAtom)) deallocate(nShellPerAtom)
       allocate(nShellPerAtom(mol%n), source=0)
+      
       ! Allocate ElemId
+      if (allocated(ElemIdPerAtom)) deallocate(ElemIdPerAtom)
       allocate(ElemIdPerAtom(mol%n), source=0)
+      
       ! Allocate ENPerAtom
+      if (allocated(electronegativityPerAtom)) deallocate(electronegativityPerAtom)
       allocate(electronegativityPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate atomicHardnessPerAtom
+      if (allocated(atomicHardnessPerAtom)) deallocate(atomicHardnessPerAtom)
       allocate(atomicHardnessPerAtom(mol%n), source=0.0_wp)
 
       ! Allocate valance CN
+      if (allocated(valanceCNPerAtom)) deallocate(valanceCNPerAtom)
       allocate(valanceCNPerAtom(mol%n), source=0.0_wp)
+      
       ! Allocate Cutoff radii for multipole electrostatics 
+      if (allocated(multiRadPerAtom)) deallocate(multiRadPerAtom)
       allocate(multiRadPerAtom(mol%n), source=0.0_wp)
 
+      ! Allocate C6PerAtom
+      if (allocated(C6PerAtom)) deallocate(C6PerAtom)
+      allocate(C6PerAtom(mol%n), source=0.0_wp)
+
       ! Allocate shellPoly with shape (4, mol%n)
+      if (allocated(shellPolyPerAtom)) deallocate(shellPolyPerAtom)
       allocate(shellPolyPerAtom(4, mol%n), source=0.0_wp)
+      
       ! Allocate selfEnergy with shape (3, mol%n)
+      if (allocated(selfEnergyPerAtom)) deallocate(selfEnergyPerAtom)
       allocate(selfEnergyPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate slaterExponent with shape (3, mol%n)
+      if (allocated(slaterExponentPerAtom)) deallocate(slaterExponentPerAtom)
       allocate(slaterExponentPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate kCN with shape (4, mol%n)
+      if (allocated(kCNPerAtom)) deallocate(kCNPerAtom)
       allocate(kCNPerAtom(4, mol%n), source=0.0_wp)
+      
       ! Allocate Shell Hardness with shape (3, mol%n)
+      if (allocated(shellHardnessPerAtom)) deallocate(shellHardnessPerAtom)
       allocate(shellHardnessPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate angshell with shape (3, mol)
+      if (allocated(angshellPerAtom)) deallocate(angshellPerAtom)
       allocate(angshellPerAtom(3, mol%n), source=0)
+      
       ! Allocate kcnat with shape (3, mol%n)
+      if (allocated(kcnatPerAtom)) deallocate(kcnatPerAtom)
       allocate(kcnatPerAtom(3, mol%n), source=0.0_wp)
+      
       ! Allocate principalQuantumNumberPerAtom (3, mol%n)
+      if (allocated(principalQuantumNumberPerAtom)) deallocate(principalQuantumNumberPerAtom)
       allocate(principalQuantumNumberPerAtom(3, mol%n), source=0)
 
 
@@ -519,10 +560,16 @@ subroutine read2Param &
       allocate(xtbData%perAtomXtbData%hamiltonian%numberOfPrimitives(mShell, mol%n), source=0)
       call setGFN2NumberOfPrimitivesPerAtom(xtbData%perAtomXtbData%hamiltonian, xtbData%perAtomXtbData%nShell)
 
-      ! Dispersion
-      call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
-         & xtbData%dispersion%g_c, p_refq_gfn2xtb)
+      xtbData%perAtomXtbData%dispersion%dpar = disp  ! after reading dispersion parameters ! TODO
 
+      ! Dispersion
+      ! call newD4Model(xtbData%perAtomXtbData%dispersion%dispm, xtbData%dispersion%g_a, &
+      !    & xtbData%dispersion%g_c, p_refq_gfn2xtb)
+
+      ! assign C6PerAtom
+      allocate(xtbData%dispersion%C6PerAtom(mol%n), source=0.0_wp)
+      ! if not assigned, raise an error
+      xtbData%dispersion%C6PerAtom = C6PerAtom(:mol%n)
       
    end select
 
@@ -1217,6 +1264,7 @@ subroutine gfn_elempar_per_atom(key,val,iz)  ! iz is the atomic id
    case('ele_id');  if (getValue(env,val,idum)) ElemIdPerAtom(iz) = idum 
    case('mpvcn'); if (getValue(env,val,ddum)) valanceCNPerAtom(iz) = ddum
    case('mprad'); if (getValue(env,val,ddum)) multiRadPerAtom(iz) = ddum
+   case('c6'); if (getValue(env,val,ddum)) C6PerAtom(iz) = ddum   ! c6 coefficient
    end select
 end subroutine gfn_elempar_per_atom
 
@@ -1652,7 +1700,7 @@ subroutine gfn_globpar(key,val,globpar)
    case('dispb'); if (getValue(env,val,ddum)) globpar%dispb = ddum
    case('dispc'); if (getValue(env,val,ddum)) globpar%dispc = ddum
    case('dispatm'); if (getValue(env,val,ddum)) globpar%dispatm = ddum
-   case('a1'); if (getValue(env,val,ddum)) disp%a1 = ddum
+   case('a1'); if (getValue(env,val,ddum)) disp%a1 = ddum      
    case('a2'); if (getValue(env,val,ddum)) disp%a2 = ddum
    case('s6'); if (getValue(env,val,ddum)) disp%s6 = ddum
    case('s8'); if (getValue(env,val,ddum)) disp%s8 = ddum
@@ -1696,7 +1744,7 @@ subroutine read_elempar
    use xtb_mctc_strings
    use xtb_readin
    implicit none
-   character(len=:), allocatable :: key, val
+   character(len=:), allocatable :: key, val  
    integer :: iz, ie
    if (getValue(env,line(4:5),iz)) then
       timestp(iz) = line(7:len_trim(line))

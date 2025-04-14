@@ -166,11 +166,13 @@ subroutine newD4Model(dispm,g_a,g_c,mode)
    dispm%atoms = 0
    dispm%nref = 0
 
-   do ia = 1, 118
+
+   ! the below loop is to get the number of reference atoms and the polarizability
+   do ia = 1, 118 ! loop over the atoms
       cncount = 0
       cncount(0) = 1
       dispm%nref(ia) = refn(ia)
-      do j = 1, refn(ia)
+      do j = 1, refn(ia)   ! loop over the reference atoms
          is = refsys(j,ia)
          iz = zeff(is)
          sec_al = sscale(is)*secaiw(:,is) &
@@ -189,9 +191,9 @@ subroutine newD4Model(dispm,g_a,g_c,mode)
    ! integrate C6 coefficients
    do i = 1, 118
       do j = 1, i
-         do ii = 1, dispm%nref(i)         ! TODO
-            do jj = 1, dispm%nref(j)
-               alpha = dispm%alpha(:,ii,i)*dispm%alpha(:,jj,j)
+         do ii = 1, dispm%nref(i)         ! reference systems
+            do jj = 1, dispm%nref(j)         ! reference systems
+               alpha = dispm%alpha(:,ii,i)*dispm%alpha(:,jj,j) ! polarizability of ref system
                c6 = thopi * trapzd(alpha)
                dispm%c6(jj,ii,j,i) = c6
                dispm%c6(ii,jj,i,j) = c6
@@ -1052,6 +1054,35 @@ subroutine weight_references(dispm, nat, atoms, g_a, g_c, wf, q, cn, zeff, gam, 
 
 end subroutine weight_references
 
+
+!> Yufan:Compute the delta C6 coefficient
+subroutine compute_delta_c6(nat, c6_per_atom, delta_c6)
+   integer, intent(in) :: nat
+   real(wp), intent(in) :: c6_per_atom(:)
+   real(wp), intent(out) :: delta_c6(:,:)
+
+   integer :: i, j
+   real(wp) :: delta_c6_ij
+
+   do i = 1, nat
+      do j = 1, nat
+         if (j > i) cycle
+         if (i == j) then  ! <<<--- Diagonal Check
+            delta_c6(i, j) = 0.0_wp ! <<<--- Explicitly sets diagonal to zero
+         else
+            ! Calculate off-diagonal terms
+            delta_c6_ij = sqrt(abs(c6_per_atom(i)) * abs(c6_per_atom(j)))
+            if (c6_per_atom(i) * c6_per_atom(j) < 0.0_wp) then
+               delta_c6_ij = -delta_c6_ij
+            endif
+            delta_c6(i, j) = delta_c6_ij
+            delta_c6(j, i) = delta_c6_ij
+         endif
+      enddo
+   enddo
+end subroutine compute_delta_c6
+
+
 !> calculate atomic dispersion coefficients and their derivatives w.r.t.
 !  the coordination number.
 subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
@@ -1076,9 +1107,23 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
 
    integer :: iat, jat, ati, atj, iref, jref
    real(wp) :: refc6, dc6, dc6dcni, dc6dcnj, dc6dqi, dc6dqj
+   real(wp), allocatable :: delta_c6(:,:) ! Allocate matrix for the delta C6 correction
+
+   ! Allocate and compute the delta C6 correction term *before* the parallel region
+   allocate(delta_c6(nat,nat))
+   call compute_delta_c6(nat, dispm%C6PerAtom, delta_c6)
+   ! if (associated(dispm%C6PerAtom)) then ! Check if the per-atom data exists
+   !     call compute_delta_c6(nat, dispm%C6PerAtom, delta_c6)
+   ! else
+   !     ! Handle case where C6PerAtom is not allocated (e.g., set delta_c6 to zero)
+   !     delta_c6 = 0.0_wp
+   !     ! Optionally issue a warning or error
+   !     ! raise an error
+   !     error stop "C6PerAtom is not allocated"
+   ! endif
 
    !$acc enter data create(c6, dc6dcn, dc6dq) copyin(atoms, dispm, dispm%nref, dispm%c6, &
-   !$acc& zetavec, zetadcn, zetadq)
+   !$acc& zetavec, zetadcn, zetadq, delta_c6) ! Add delta_c6 to copyin
 
    !$acc kernels default(present)
    c6 = 0.0_wp
@@ -1090,14 +1135,13 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
    !$acc parallel default(present)
    !$acc loop gang collapse(2)
 #else
-   !$omp parallel do default(none) shared(c6, dc6dcn, dc6dq) &
+   !$omp parallel do default(none) shared(c6, dc6dcn, dc6dq, delta_c6) & ! Add delta_c6 to shared list
    !$omp shared(nat, atoms, dispm, zetavec, zetadcn, zetadq) &
    !$omp private(iat, ati, jat, atj, dc6, dc6dcni, dc6dcnj, dc6dqi, dc6dqj, &
    !$omp& iref, jref, refc6)
 #endif
    do iat = 1, nat
-      do jat = 1, nat
-         if (jat > iat) cycle
+      do jat = 1, iat ! Iterate lower triangle including diagonal
          ati = atoms(iat)
          atj = atoms(jat)
          dc6 = 0.0_wp
@@ -1106,30 +1150,45 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
          dc6dqi = 0.0_wp
          dc6dqj = 0.0_wp
          !$acc loop vector collapse(2)
-         do iref = 1, dispm%nref(ati)
+         do iref = 1, dispm%nref(ati)  ! weighted sum to get the C6 coefficient contribution
             do jref = 1, dispm%nref(atj)
                refc6 = dispm%c6(iref, jref, ati, atj)
                dc6 = dc6 + zetavec(iref, iat) * zetavec(jref, jat) * refc6
+               ! Derivatives calculated here only reflect the 'dc6' part from weighted sum
                dc6dcni = dc6dcni + zetadcn(iref, iat) * zetavec(jref, jat) * refc6
                dc6dcnj = dc6dcnj + zetavec(iref, iat) * zetadcn(jref, jat) * refc6
                dc6dqi = dc6dqi + zetadq(iref, iat) * zetavec(jref, jat) * refc6
                dc6dqj = dc6dqj + zetavec(iref, iat) * zetadq(jref, jat) * refc6
             end do
          end do
-         c6(iat, jat) = dc6
-         c6(jat, iat) = dc6
-         dc6dcn(iat, jat) = dc6dcni
-         dc6dcn(jat, iat) = dc6dcnj
-         dc6dq(iat, jat) = dc6dqi
-         dc6dq(jat, iat) = dc6dqj
+
+         ! Handle diagonal and off-diagonal terms
+         if (iat == jat) then
+            ! Explicitly set diagonal terms to zero (delta_c6(i,i) is already zero)
+            ! c6(iat, iat) = 0.0_wp
+            ! dc6dcn(iat, iat) = 0.0_wp ! Derivatives of diagonal are zero
+            ! dc6dq(iat, iat) = 0.0_wp
+         else
+            ! Assign calculated weighted sum + delta_c6 correction to off-diagonal terms
+            c6(iat, jat) = dc6 + delta_c6(iat, jat)  ! Add delta C6 correction
+            c6(jat, iat) = c6(iat, jat)               ! Assign symmetrically
+            ! Assign derivatives (NOTE: Missing derivative contribution from delta_c6)
+            dc6dcn(iat, jat) = dc6dcni  ! Lower triangle CN derivative (incomplete)
+            dc6dcn(jat, iat) = dc6dcnj  ! Upper triangle CN derivative (incomplete)
+            dc6dq(iat, jat) = dc6dqi    ! Lower triangle charge derivative (incomplete)
+            dc6dq(jat, iat) = dc6dqj    ! Upper triangle charge derivative (incomplete)
+         endif
+
       end do
    end do
 #ifdef XTB_GPU
    !$acc end parallel
 
    !$acc exit data copyout(c6, dc6dcn, dc6dq) delete(atoms, dispm, dispm%nref, dispm%c6, &
-   !$acc& zetavec, zetadcn, zetadq)
+   !$acc& zetavec, zetadcn, zetadq, delta_c6) ! Remove delta_c6 from device
 #endif
+
+   deallocate(delta_c6) ! Deallocate the temporary matrix
 
 end subroutine get_atomic_c6
 
