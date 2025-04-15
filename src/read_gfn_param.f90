@@ -460,8 +460,8 @@ subroutine read2Param &
                call read_info_per_atom
             ! case('globpar')
             !    call read_globpar_per_atom
-            ! case('pairpar')
-            !    call read_pairpar
+            case('pairmatrix')
+               call read_pairmatrix(iunitPerAtom, xtbData%dispersion%c6matrix, mol%n)
             case default
                if (index(line,'Z').eq.2) then ! eq.2 means the second character is 'Z'
                   call read_elempar_per_atom !!!! read_elempar is called here !!!!!
@@ -567,10 +567,15 @@ subroutine read2Param &
       !    & xtbData%dispersion%g_c, p_refq_gfn2xtb)
 
       ! assign C6PerAtom
+      deallocate(xtbData%dispersion%C6PerAtom)
       allocate(xtbData%dispersion%C6PerAtom(mol%n), source=0.0_wp)
       ! if not assigned, raise an error
       xtbData%dispersion%C6PerAtom = C6PerAtom(:mol%n)
-      
+
+      ! assign c6matrix
+      deallocate(xtbData%dispersion%c6matrix)
+      allocate(xtbData%dispersion%c6matrix(mol%n, mol%n), source=0.0_wp)
+      xtbData%dispersion%c6matrix = xtbData%dispersion%c6matrix(:mol%n, :mol%n)
    end select
 
 contains
@@ -1291,6 +1296,47 @@ subroutine checkElemIdPerAtomMatch(env, ElemIdPerAtom, mol)
 
   print *, 'Success: ElemIdPerAtom matches mol%at'
 end subroutine checkElemIdPerAtomMatch
+
+
+!> Yufan: for new read_pairmatrix, specific for c6, not gfn1 like pairpar
+subroutine read_pairmatrix(iunitPerAtom, c6matrix, natom)
+   integer, intent(in) :: iunitPerAtom, natom
+   real(wp), intent(out) :: c6matrix(natom, natom)
+   integer :: err
+
+   do
+      call getline(iunitPerAtom, line, err)
+      if (err.ne.0) exit
+      if (index(line, '$end').ne.0) exit
+
+      if (index(line, '$c6').eq.1) then
+         call read_c6matrix(iunitPerAtom, c6matrix, natom)
+      endif
+   end do
+end subroutine read_pairmatrix
+
+
+subroutine read_c6matrix(iunitPerAtom, c6matrix, natom)
+   integer, intent(in) :: iunitPerAtom, natom
+   real(wp), intent(out) :: c6matrix(natom, natom)
+   integer :: i, j, err
+
+   ! Initialize the matrix to zero
+   c6matrix = 0.0_wp
+
+   do i = 1, natom
+      call getline(iunitPerAtom, line, err)
+      if (err.ne.0) exit
+
+      ! Read natom values from the line
+      read(line, *) (c6matrix(i, j), j = 1, natom)
+
+      ! Ensure symmetry
+      do j = 1, i-1
+         c6matrix(j, i) = c6matrix(i, j)
+      end do
+   end do
+end subroutine read_c6matrix
 
 
 end subroutine read2Param
