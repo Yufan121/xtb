@@ -41,7 +41,7 @@ subroutine read2Param &
 
    implicit none
 
-   logical, parameter :: debug = .false.
+   logical, parameter :: debug = .true.
 
    type(TEnvironment), intent(inout) :: env
    integer, intent(in) :: iunit, iunitPerAtom 
@@ -450,6 +450,10 @@ subroutine read2Param &
       if (allocated(principalQuantumNumberPerAtom)) deallocate(principalQuantumNumberPerAtom)
       allocate(principalQuantumNumberPerAtom(3, mol%n), source=0)
 
+      ! Allocate c6matrixPerAtom
+      if (allocated(c6matrixPerAtom)) deallocate(c6matrixPerAtom)
+      allocate(c6matrixPerAtom(mol%n, mol%n), source=0.0_wp)
+
 
       !!! loop structure, load file prarm to xtb_xtb_gfn2_perAtom (overwrite original file)
       if (debug) print'(">",a)',line
@@ -461,7 +465,7 @@ subroutine read2Param &
             ! case('globpar')
             !    call read_globpar_per_atom
             case('pairmatrix')
-               call read_pairmatrix(iunitPerAtom, xtbData%dispersion%c6matrix, mol%n)
+               call read_pairmatrix(iunitPerAtom, mol%n)
             case default
                if (index(line,'Z').eq.2) then ! eq.2 means the second character is 'Z'
                   call read_elempar_per_atom !!!! read_elempar is called here !!!!!
@@ -567,15 +571,15 @@ subroutine read2Param &
       !    & xtbData%dispersion%g_c, p_refq_gfn2xtb)
 
       ! assign C6PerAtom
-      deallocate(xtbData%dispersion%C6PerAtom)
+      if (allocated(xtbData%dispersion%C6PerAtom)) deallocate(xtbData%dispersion%C6PerAtom)
       allocate(xtbData%dispersion%C6PerAtom(mol%n), source=0.0_wp)
       ! if not assigned, raise an error
       xtbData%dispersion%C6PerAtom = C6PerAtom(:mol%n)
+      xtbData%dispersion%dispm%C6PerAtom = C6PerAtom(:mol%n)
 
       ! assign c6matrix
-      deallocate(xtbData%dispersion%c6matrix)
-      allocate(xtbData%dispersion%c6matrix(mol%n, mol%n), source=0.0_wp)
-      xtbData%dispersion%c6matrix = xtbData%dispersion%c6matrix(:mol%n, :mol%n)
+      xtbData%dispersion%c6matrix = c6matrixPerAtom(:mol%n, :mol%n)
+      xtbData%dispersion%dispm%c6matrix = c6matrixPerAtom(:mol%n, :mol%n)
    end select
 
 contains
@@ -1299,9 +1303,9 @@ end subroutine checkElemIdPerAtomMatch
 
 
 !> Yufan: for new read_pairmatrix, specific for c6, not gfn1 like pairpar
-subroutine read_pairmatrix(iunitPerAtom, c6matrix, natom)
+subroutine read_pairmatrix(iunitPerAtom, natom)
    integer, intent(in) :: iunitPerAtom, natom
-   real(wp), intent(out) :: c6matrix(natom, natom)
+   ! real(wp), intent(out) :: c6matrix(natom, natom)
    integer :: err
 
    do
@@ -1309,31 +1313,41 @@ subroutine read_pairmatrix(iunitPerAtom, c6matrix, natom)
       if (err.ne.0) exit
       if (index(line, '$end').ne.0) exit
 
-      if (index(line, '$c6').eq.1) then
-         call read_c6matrix(iunitPerAtom, c6matrix, natom)
+      if (index(line, '$c6matrix').eq.1) then
+         call read_c6matrix(iunitPerAtom, natom)
       endif
    end do
 end subroutine read_pairmatrix
 
 
-subroutine read_c6matrix(iunitPerAtom, c6matrix, natom)
+subroutine read_c6matrix(iunitPerAtom, natom)
    integer, intent(in) :: iunitPerAtom, natom
-   real(wp), intent(out) :: c6matrix(natom, natom)
    integer :: i, j, err
-
-   ! Initialize the matrix to zero
-   c6matrix = 0.0_wp
+   character(len=:), allocatable :: line
+   real(wp) :: values(natom)
+   integer :: num_values
 
    do i = 1, natom
       call getline(iunitPerAtom, line, err)
+      if (debug) print'(a)',line
       if (err.ne.0) exit
 
-      ! Read natom values from the line
-      read(line, *) (c6matrix(i, j), j = 1, natom)
+      ! Split the line into values
+      read(line, *) values    ! if not match, error    
 
-      ! Ensure symmetry
+      ! Assign values to the matrix
+      do j = 1, natom
+         c6matrixPerAtom(i, j) = values(j)
+      end do
+
+   end do
+   ! Check symmetry, if not, raise an error
+   do i = 1, natom
       do j = 1, i-1
-         c6matrix(j, i) = c6matrix(i, j)
+         if (c6matrixPerAtom(i, j) /= c6matrixPerAtom(j, i)) then
+            call env%error("Error: Symmetry violation in c6matrix")
+            stop "Error: Symmetry violation in c6matrix"
+         end if
       end do
    end do
 end subroutine read_c6matrix

@@ -1111,16 +1111,13 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
 
    ! Allocate and compute the delta C6 correction term *before* the parallel region
    allocate(delta_c6(nat,nat))
-   call compute_delta_c6(nat, dispm%C6PerAtom, delta_c6)
-   ! if (associated(dispm%C6PerAtom)) then ! Check if the per-atom data exists
-   !     call compute_delta_c6(nat, dispm%C6PerAtom, delta_c6)
-   ! else
-   !     ! Handle case where C6PerAtom is not allocated (e.g., set delta_c6 to zero)
-   !     delta_c6 = 0.0_wp
-   !     ! Optionally issue a warning or error
-   !     ! raise an error
-   !     error stop "C6PerAtom is not allocated"
-   ! endif
+   ! Yufan: modification
+   ! if use per-atom c6
+   ! call compute_delta_c6(nat, dispm%C6PerAtom, delta_c6)
+   ! if use pairmatrix
+   delta_c6 = dispm%c6matrix
+
+
 
    !$acc enter data create(c6, dc6dcn, dc6dq) copyin(atoms, dispm, dispm%nref, dispm%c6, &
    !$acc& zetavec, zetadcn, zetadq, delta_c6) ! Add delta_c6 to copyin
