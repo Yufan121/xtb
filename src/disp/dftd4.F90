@@ -1168,6 +1168,10 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
          else
             ! Assign calculated weighted sum + delta_c6 correction to off-diagonal terms
             c6(iat, jat) = dc6 + delta_c6(iat, jat)  ! Add delta C6 correction
+            ! if < 0, make it absolute value       ! SKEPTICAL, Yufan
+            if (c6(iat, jat) < 0.0_wp) then
+               c6(iat, jat) = abs(c6(iat, jat))
+            endif
             c6(jat, iat) = c6(iat, jat)               ! Assign symmetrically
             ! Assign derivatives (NOTE: Missing derivative contribution from delta_c6)
             dc6dcn(iat, jat) = dc6dcni  ! Lower triangle CN derivative (incomplete)
