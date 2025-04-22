@@ -131,6 +131,9 @@ module xtb_xtb_gfn2_per_atom
   ! Principal quantum number of each shell, (3, natom)
   integer, allocatable :: principalQuantumNumberPerAtom(:, :)
 
+  !> Yufan: C6 coefficient (natom, natom)
+  real(wp), allocatable :: c6matrixPerAtom(:, :)
+
 
 
   contains

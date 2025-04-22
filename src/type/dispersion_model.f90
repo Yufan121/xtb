@@ -36,6 +36,9 @@ module xtb_type_dispersionmodel
 
       ! Yufan: C6 coefficient (1, natom)
       real(wp), allocatable :: C6PerAtom(:)
+
+      ! Yufan: C6 coefficient (natom, natom)
+      real(wp), allocatable :: c6matrix(:, :)
    end type TDispersionModel
 
    interface init

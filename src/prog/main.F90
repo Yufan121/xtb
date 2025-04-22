@@ -737,6 +737,9 @@ contains
          print *, numg
          print'(/,"difference gradient")'
          print *, g - numg
+         g = numg ! Replace analytical gradient with numerical gradient
+         ! print that the gradient has been replaced
+         print'(/,"gradient replaced with numerical gradient")'
          deallocate (coord)
       end if
 

@@ -267,22 +267,22 @@ install(
   "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
 )
 
-# Install Python scripts
-install(
-  FILES
-  "${PROJECT_SOURCE_DIR}/python/scripts/evaluate_single_frame.py"
-  DESTINATION
-  "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
-)
+# # Install Python scripts
+# install(
+#   FILES
+#   "${PROJECT_SOURCE_DIR}/python/scripts/evaluate_single_frame.py"
+#   DESTINATION
+#   "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
+# )
 
-# Install the entire python/scripts directory
-install(
-  DIRECTORY
-  "${PROJECT_SOURCE_DIR}/python/scripts/"
-  DESTINATION
-  "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/python/scripts"
-  FILES_MATCHING PATTERN "*.py"
-)
+# # Install the entire python/scripts directory
+# install(
+#   DIRECTORY
+#   "${PROJECT_SOURCE_DIR}/python/scripts/"
+#   DESTINATION
+#   "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/python/scripts"
+#   FILES_MATCHING PATTERN "*.py"
+# )
 
 if (INSTALL_MODULES)
    install(

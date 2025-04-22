@@ -65,6 +65,9 @@ module xtb_xtb_data
       !> Yufan: Per-atom C6 coefficients
       real(wp), allocatable :: C6PerAtom(:)
 
+      !> Yufan: C6 coefficient (natom, natom)
+      real(wp), allocatable :: c6matrix(:, :)
+
 
    end type TDispersionData
 
