@@ -1215,6 +1215,8 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
    !> derivative of the C6 w.r.t. the partial charge
    real(wp), intent(out) :: dc6dq(:, :)
 
+   real(wp) :: c6_total, c6_sign
+
    integer :: iat, jat, ati, atj, iref, jref
    real(wp) :: refc6, dc6, dc6dcni, dc6dcnj, dc6dqi, dc6dqj
 
@@ -1233,6 +1235,7 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
 #else
    !$omp parallel do default(none) shared(c6, dc6dcn, dc6dq) &
    !$omp shared(nat, atoms, dispm, zetavec, zetadcn, zetadq) &
+   !$omp shared(c6_total, c6_sign) &
    !$omp private(iat, ati, jat, atj, dc6, dc6dcni, dc6dcnj, dc6dqi, dc6dqj, &
    !$omp& iref, jref, refc6)
 #endif
@@ -1257,14 +1260,25 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
                dc6dqj = dc6dqj + zetavec(iref, iat) * zetadq(jref, jat) * refc6
             end do
          end do
-         c6(iat, jat) = abs(dc6 + dispm%c6matrix(iat, jat))
-         c6(jat, iat) = abs(dc6 + dispm%c6matrix(jat, iat))
-         dc6dcn(iat, jat) = dc6dcni
-         dc6dcn(jat, iat) = dc6dcnj
-         dc6dq(iat, jat) = dc6dqi
-         dc6dq(jat, iat) = dc6dqj
-      end do
-   end do
+
+         ! Calculate the total C6 before taking the absolute value
+         c6_total = dc6 + dispm%c6matrix(iat, jat) ! Or (jat, iat), ensure symmetry if needed
+
+         ! Determine the sign for the derivative correction
+         c6_sign = sign(1.0_wp, c6_total)
+
+         ! Store the final C6 value (absolute value)
+         c6(iat, jat) = abs(c6_total)
+         c6(jat, iat) = c6(iat, jat) ! Assign symmetrically
+
+         ! Apply the sign correction to the derivatives
+         ! Derivative = sign(original_value) * derivative_of_original_value
+         dc6dcn(iat, jat) = c6_sign * dc6dcni
+         dc6dcn(jat, iat) = c6_sign * dc6dcnj
+         dc6dq(iat, jat)  = c6_sign * dc6dqi
+         dc6dq(jat, iat)  = c6_sign * dc6dqj
+      end do ! end jat loop
+   end do ! end iat loop
 #ifdef XTB_GPU
    !$acc end parallel
 
