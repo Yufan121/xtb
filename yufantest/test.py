@@ -47,8 +47,13 @@ def obtain_modified_xtb(xtb_modified=None, xtbpath=None, xyzfile=None, param_fil
     param_file.prep_per_atom_param()
 
     if zero_params:
-        # Set all parameters to zero
-        param_file.set_param([{key: 0 for key in param_file.ele_param_enum}])
+        pass
+        # # Set all parameters to zero
+        # dict_globpar = {key: 0 for key in param_file.glob_param_enum}
+        # dict_param = {key: 0 for key in param_file.ele_param_enum}  
+        # dict_pairpar = pairpar_tensor2dict(torch.zeros((len(param_file.ele_id), len(param_file.ele_id))), param_file.pair_param_enum, param_file.ele_id)
+
+        # param_file.set_param([dict_globpar] + dict_param + [dict_pairpar])
     else:
         # Perturb parameter
         param_file.perturb_param(aid=aid, index=0, key=key, offset=-delta)  # Subtract value from element parameter
@@ -98,6 +103,8 @@ if __name__ == "__main__":
     
     glob_param_enum = ['ks', 'kp', 'kd', 'ksd', 'kpd', 'kdiff', 'enscale', 'ipeashift', 'gam3s', 'gam3p', 'gam3d1', 'gam3d2', 'aesshift', 'aesexp', 'aesrmax', 'alphaj', 'a1', 'a2', 's8', 's9', 'aesdmp3', 'aesdmp5', 'kexp', 'kexplight']
     ele_param_enum = ['lev', 'exp', 'EN','GAM', 'GAM3', 'KCNS', 'KCNP', 'KCND', 'DPOL', 'QPOL', 'REPA', 'REPB', 'POLYS', 'POLYP', 'POLYD', 'LPARP', 'LPARD', 'mpvcn', 'mprad']
+    pair_param_enum = ['c6matrix']
+
     len_ele_param_enum = [3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
     
@@ -109,7 +116,7 @@ if __name__ == "__main__":
     at_list = ref_dict['atomic_numbers']
     print(f'at_list: {at_list}')
     
-    param_file = ParameterFile(elem_param, atom_param, ele_param_enum, glob_param_enum, at_list) # Update with correct parameters
+    param_file = ParameterFile(elem_param, atom_param, ele_param_enum, glob_param_enum, pair_param_enum, at_list) # Update with correct parameters
 
     # Vanilla xTB
     energies_vanilla, forces_vanilla, frequencies_vanilla = obtain_vanilla_xtb(xtb_vanilla, xtbpath, xyzfile)

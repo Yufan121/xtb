@@ -41,7 +41,7 @@ subroutine read2Param &
 
    implicit none
 
-   logical, parameter :: debug = .true.
+   logical, parameter :: debug = .false.
 
    type(TEnvironment), intent(inout) :: env
    integer, intent(in) :: iunit, iunitPerAtom 
