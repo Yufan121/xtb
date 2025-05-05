@@ -1265,7 +1265,7 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
          c6_total = dc6 + dispm%c6matrix(iat, jat) ! Or (jat, iat), ensure symmetry if needed
 
          ! Determine the sign for the derivative correction
-         c6_sign = sign(1.0_wp, c6_total)
+         ! c6_sign = sign(1.0_wp, c6_total)  # temporary comment out, may be wrong.
 
          ! Store the final C6 value (absolute value)
          c6(iat, jat) = abs(c6_total)
@@ -1273,10 +1273,10 @@ subroutine get_atomic_c6(dispm, nat, atoms, zetavec, zetadcn, zetadq, &
 
          ! Apply the sign correction to the derivatives
          ! Derivative = sign(original_value) * derivative_of_original_value
-         dc6dcn(iat, jat) = c6_sign * dc6dcni
-         dc6dcn(jat, iat) = c6_sign * dc6dcnj
-         dc6dq(iat, jat)  = c6_sign * dc6dqi
-         dc6dq(jat, iat)  = c6_sign * dc6dqj
+         dc6dcn(iat, jat) = dc6dcni
+         dc6dcn(jat, iat) = dc6dcnj
+         dc6dq(iat, jat)  = dc6dqi
+         dc6dq(jat, iat)  = dc6dqj
       end do ! end jat loop
    end do ! end iat loop
 #ifdef XTB_GPU
